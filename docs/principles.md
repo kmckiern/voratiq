@@ -1,0 +1,2 @@
+- **No legacy support.** The project evolves rapidly, and every release may remove older code paths. We do not carry shims for prior layouts, schemas, or CLIs; fixes should update the latest design instead of preserving history.
+- **Fast failures beat silent fallbacks.** When required files are missing or malformed, commands must exit with actionable errors rather than auto-healing. Any fallback that masks user mistakes should be treated as a bug.
