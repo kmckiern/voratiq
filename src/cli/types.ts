@@ -6,7 +6,10 @@ export const voratiqRunPresetSchema = z.object({
 
 export type VoratiqRunPreset = z.infer<typeof voratiqRunPresetSchema>;
 
-export const voratiqPresetMapSchema = z.record(voratiqRunPresetSchema);
+export const voratiqPresetMapSchema = z.record(
+  z.string(),
+  voratiqRunPresetSchema,
+);
 
 export const voratiqConfigSchema = z.object({
   default: voratiqRunPresetSchema.optional(),

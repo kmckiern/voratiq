@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { agentIdSchema } from "../agents/types";
+import { agentIdSchema } from "../agents/types.js";
 
 export const runSpecDescriptorSchema = z.object({
   path: z.string(),
