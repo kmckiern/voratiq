@@ -1,35 +1,54 @@
-import type { AgentId } from "../agents/types";
+import { z } from "zod";
 
-export interface SpecReference {
-  path: string;
-  sha256: string;
-}
+import { agentIdSchema } from "../agents/types";
 
-export interface AgentAssets {
-  stdout: string;
-  stderr: string;
-}
+export const runSpecDescriptorSchema = z.object({
+  path: z.string(),
+  sha256: z.string().optional(),
+});
 
-export type AgentStatus = "succeeded" | "failed" | "running" | "pending";
+export type RunSpecDescriptor = z.infer<typeof runSpecDescriptorSchema>;
 
-export interface Agent {
-  agentId: AgentId;
-  model: string;
-  binaryPath: string;
-  argv: string[];
-  prompt: string;
-  workspacePath: string;
-  startedAt: string;
-  completedAt: string;
-  status: AgentStatus;
-  assets: AgentAssets;
-}
+export const agentAssetPointersSchema = z.object({
+  stdout: z.string().optional(),
+  stderr: z.string().optional(),
+  transcript: z.string().optional(),
+});
 
-export interface RunRecord {
-  runId: string;
-  spec: SpecReference;
-  createdAt: string;
-  baseRevision: string;
-  rootPath: string;
-  agents: Agent[];
-}
+export type AgentAssetPointers = z.infer<typeof agentAssetPointersSchema>;
+
+export const agentStatusSchema = z.enum([
+  "queued",
+  "running",
+  "succeeded",
+  "failed",
+  "skipped",
+]);
+
+export type AgentStatus = z.infer<typeof agentStatusSchema>;
+
+export const agentInvocationRecordSchema = z.object({
+  agentId: agentIdSchema,
+  model: z.string(),
+  binaryPath: z.string(),
+  argv: z.array(z.string()),
+  prompt: z.string(),
+  workspacePath: z.string(),
+  startedAt: z.string().optional(),
+  completedAt: z.string().optional(),
+  status: agentStatusSchema,
+  assets: agentAssetPointersSchema,
+});
+
+export type AgentInvocationRecord = z.infer<typeof agentInvocationRecordSchema>;
+
+export const runRecordSchema = z.object({
+  runId: z.string(),
+  spec: runSpecDescriptorSchema,
+  createdAt: z.string(),
+  baseRevision: z.string(),
+  rootPath: z.string(),
+  agents: z.array(agentInvocationRecordSchema),
+});
+
+export type RunRecord = z.infer<typeof runRecordSchema>;
