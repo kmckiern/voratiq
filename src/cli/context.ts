@@ -1,4 +1,3 @@
-
 import { assertGitRepository } from "../utils/git.js";
 import {
   validateWorkspace,
@@ -78,10 +77,7 @@ export async function ensureSpecPath(
 import { RunRecord } from "../run/types.js";
 import { RunNotFoundError } from "./errors.js";
 
-export function ensureRunId(
-  runId: string,
-  runs: RunRecord[],
-): RunRecord {
+export function ensureRunId(runId: string, runs: RunRecord[]): RunRecord {
   const run = runs.find((r) => r.runId === runId);
   if (!run) {
     throw new RunNotFoundError(runId);

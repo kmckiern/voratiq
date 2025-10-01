@@ -1,6 +1,18 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+
 import { vol } from "memfs";
 import { fs } from "memfs";
-import { resolveCliContext, ensureSpecPath, ensureRunId } from "../../src/cli/context";
+import {
+  resolveCliContext,
+  ensureSpecPath,
+  ensureRunId,
+  CliContext,
+  ResolvedSpecPath,
+} from "../../src/cli/context";
 import { SpecNotFoundError, RunNotFoundError } from "../../src/cli/errors";
 import { GitRepositoryError } from "../../src/utils/git";
 import { WorkspaceMissingEntryError } from "../../src/workspace";
@@ -12,12 +24,12 @@ describe("CLI Context", () => {
   beforeEach(() => {
     vol.reset();
     // Set up a mock for process.cwd
-    jest.spyOn(process, 'cwd').mockReturnValue('/app/voratiq');
+    jest.spyOn(process, "cwd").mockReturnValue("/app/voratiq");
   });
 
   afterEach(() => {
     jest.restoreAllMocks();
-  })
+  });
 
   describe("resolveCliContext", () => {
     it("should throw an error if not in a git repository", async () => {
@@ -31,14 +43,18 @@ describe("CLI Context", () => {
       vol.fromJSON({
         "/app/voratiq/.git": "",
       });
-      await expect(resolveCliContext()).rejects.toThrow(WorkspaceMissingEntryError);
+      await expect(resolveCliContext()).rejects.toThrow(
+        WorkspaceMissingEntryError,
+      );
     });
 
     it("should not throw an error if workspace is not required and not found", async () => {
       vol.fromJSON({
         "/app/voratiq/.git": "",
       });
-      const context = await resolveCliContext({ requireWorkspace: false });
+      const context: CliContext = await resolveCliContext({
+        requireWorkspace: false,
+      });
       expect(context.root).toBe("/app/voratiq");
     });
 
@@ -49,7 +65,7 @@ describe("CLI Context", () => {
         "/app/voratiq/.voratiq/runs.jsonl": "",
         "/app/voratiq/.voratiq/runs": null,
       });
-      const context = await resolveCliContext();
+      const context: CliContext = await resolveCliContext();
       expect(context.root).toBe("/app/voratiq");
       expect(context.workspacePaths.workspaceDir).toBe("/app/voratiq/.voratiq");
     });
@@ -63,13 +79,18 @@ describe("CLI Context", () => {
     });
 
     it("should return the resolved spec path if it exists", async () => {
-      const specPath = await ensureSpecPath("spec.md", "/app/voratiq");
+      const specPath: ResolvedSpecPath = await ensureSpecPath(
+        "spec.md",
+        "/app/voratiq",
+      );
       expect(specPath.absolutePath).toBe("/app/voratiq/spec.md");
       expect(specPath.displayPath).toBe("spec.md");
     });
 
     it("should throw an error if the spec path does not exist", async () => {
-      await expect(ensureSpecPath("nonexistent.md", "/app/voratiq")).rejects.toThrow(SpecNotFoundError);
+      await expect(
+        ensureSpecPath("nonexistent.md", "/app/voratiq"),
+      ).rejects.toThrow(SpecNotFoundError);
     });
   });
 
@@ -86,7 +107,7 @@ describe("CLI Context", () => {
     ];
 
     it("should return the run if it exists", () => {
-      const run = ensureRunId("123", runs);
+      const run: RunRecord = ensureRunId("123", runs);
       expect(run.runId).toBe("123");
     });
 

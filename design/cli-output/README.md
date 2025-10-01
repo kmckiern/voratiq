@@ -7,6 +7,7 @@ This document outlines the user-facing design, action trees, and rationale for t
 The CLI's design is guided by the principles in `docs/principles.md`: fast failures, thin command logic, and a single source of truth for workspace definitions. The user experience prioritizes clarity, consistency, and conciseness, providing the minimum information needed for a user to act.
 
 Key elements of the design include:
+
 - **Minimalism**: Each command provides a focused output, avoiding verbose logs unless an error occurs.
 - **Discoverability**: Commands suggest the next logical action (e.g., `voratiq run` points to `voratiq review`).
 - **Consistency**: Terminology, formatting, and artifact paths are consistent across all commands.
@@ -98,6 +99,7 @@ The tone is professional, direct, and concise, suitable for a developer-focused 
 ### Terminology
 
 The terminology is drawn directly from the project's documentation (`docs/` and `specs/`) to ensure consistency. Key terms include:
+
 - **Run**: A single execution of agents against a spec.
 - **Spec**: The input file describing the task for the agents.
 - **Agent**: An AI model configured to generate code (`claude-code`, `codex`).
