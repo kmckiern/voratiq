@@ -70,6 +70,8 @@ describe("workspace bootstrap", () => {
     const configPath = resolveWorkspacePath(repoRoot, "config.json");
     await writeFile(configPath, "");
 
-    await expect(validateWorkspace(repoRoot)).rejects.toThrow("config.json is empty");
+    await expect(validateWorkspace(repoRoot)).rejects.toThrow(
+      "config.json is empty",
+    );
   });
 });

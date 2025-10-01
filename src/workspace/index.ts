@@ -112,7 +112,10 @@ export async function validateWorkspace(root: string): Promise<void> {
   );
 }
 
-async function readAndValidateConfig(root: string, configPath: string): Promise<void> {
+async function readAndValidateConfig(
+  root: string,
+  configPath: string,
+): Promise<void> {
   const displayPath = relativeToRoot(root, configPath);
   const raw = await readFile(configPath, "utf8");
 
@@ -124,7 +127,10 @@ async function readAndValidateConfig(root: string, configPath: string): Promise<
   try {
     parsed = JSON.parse(raw);
   } catch (error) {
-    throw new WorkspaceInvalidConfigError(displayPath, (error as Error).message);
+    throw new WorkspaceInvalidConfigError(
+      displayPath,
+      (error as Error).message,
+    );
   }
 
   const result = voratiqConfigSchema.safeParse(parsed);
