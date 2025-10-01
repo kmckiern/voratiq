@@ -1,0 +1,5 @@
+```
+$ voratiq run --path tests/fixtures/hello-world.md --test-command "npm test"
+
+[TODO]
+```
