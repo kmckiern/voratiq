@@ -1,4 +1,3 @@
-
 export class GitRepositoryError extends Error {
   constructor(message: string) {
     super(message);

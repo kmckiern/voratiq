@@ -8,10 +8,7 @@ import {
   resolveWorkspacePath,
   validateWorkspace,
 } from "../../src/workspace/index.js";
-import {
-  WorkspaceMissingEntryError,
-  WorkspaceInvalidConfigError,
-} from "../../src/workspace/errors.js";
+import { WorkspaceMissingEntryError } from "../../src/workspace/errors.js";
 
 async function createTempRepo(): Promise<string> {
   const dir = await mkdtemp(join(tmpdir(), "voratiq-init-"));
