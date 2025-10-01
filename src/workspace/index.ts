@@ -103,29 +103,35 @@ export async function validateWorkspace(root: string): Promise<void> {
     configPath,
     () => new WorkspaceMissingEntryError(relativeToRoot(root, configPath)),
   );
-
-  const configRaw = await readFile(configPath, "utf8");
-  let configJson: unknown;
-  try {
-    configJson = configRaw.trim().length === 0 ? {} : JSON.parse(configRaw);
-  } catch (error) {
-    throw new WorkspaceInvalidConfigError(
-      relativeToRoot(root, configPath),
-      (error as Error).message,
-    );
-  }
-
-  const parseResult = voratiqConfigSchema.safeParse(configJson);
-  if (!parseResult.success) {
-    throw new WorkspaceInvalidConfigError(
-      relativeToRoot(root, configPath),
-      parseResult.error.issues.map((issue) => issue.message).join(", "),
-    );
-  }
+  await readAndValidateConfig(root, configPath);
 
   const runsIndexPath = resolveWorkspacePath(root, VORATIQ_RUNS_FILE);
   await ensureFileExists(
     runsIndexPath,
     () => new WorkspaceMissingEntryError(relativeToRoot(root, runsIndexPath)),
   );
+}
+
+async function readAndValidateConfig(root: string, configPath: string): Promise<void> {
+  const displayPath = relativeToRoot(root, configPath);
+  const raw = await readFile(configPath, "utf8");
+
+  if (raw.trim().length === 0) {
+    throw new WorkspaceInvalidConfigError(displayPath, "config.json is empty");
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (error) {
+    throw new WorkspaceInvalidConfigError(displayPath, (error as Error).message);
+  }
+
+  const result = voratiqConfigSchema.safeParse(parsed);
+  if (!result.success) {
+    throw new WorkspaceInvalidConfigError(
+      displayPath,
+      result.error.issues.map((issue) => issue.message).join(", "),
+    );
+  }
 }
