@@ -7,6 +7,12 @@
     "types": ["node", "jest"],
     "noEmit": true
   },
-  "include": ["src/**/*.ts", "tests/**/*.ts", "tests/**/*.tsx", "tests/**/*.js", "tests/**/*.jsx"],
+  "include": [
+    "src/**/*.ts",
+    "tests/**/*.ts",
+    "tests/**/*.tsx",
+    "tests/**/*.js",
+    "tests/**/*.jsx"
+  ],
   "exclude": ["dist"]
 }
