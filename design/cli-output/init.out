@@ -1,0 +1,9 @@
+```
+$ voratiq init
+
+Voratiq workspace created.
+  - .voratiq/
+  - .voratiq/runs/
+  - .voratiq/config.json
+  - .voratiq/runs.jsonl
+```
