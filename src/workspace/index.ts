@@ -7,7 +7,7 @@ import {
   pathExists,
   relativeToRoot,
   resolvePath,
-} from "../utils/path.js";
+} from "../utils/fs.js";
 
 export const VORATIQ_DIR = ".voratiq";
 export const VORATIQ_RUNS_DIR = "runs";
