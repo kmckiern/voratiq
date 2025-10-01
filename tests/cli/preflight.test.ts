@@ -4,19 +4,19 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 
-import { vol } from "memfs";
-import { fs } from "memfs";
+import { fs, vol } from "memfs";
+
+import { RunNotFoundError, SpecNotFoundError } from "../../src/cli/errors";
 import {
-  resolveCliContext,
-  ensureSpecPath,
-  ensureRunId,
   CliContext,
   ResolvedSpecPath,
+  ensureRunId,
+  ensureSpecPath,
+  resolveCliContext,
 } from "../../src/cli/preflight";
-import { SpecNotFoundError, RunNotFoundError } from "../../src/cli/errors";
+import type { RunRecord } from "../../src/run/types";
 import { GitRepositoryError } from "../../src/utils/git";
 import { WorkspaceMissingEntryError } from "../../src/workspace";
-import type { RunRecord } from "../../src/run/types";
 
 jest.mock("node:fs/promises", () => fs.promises);
 

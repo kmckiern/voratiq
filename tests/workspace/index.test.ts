@@ -2,13 +2,13 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import { WorkspaceMissingEntryError } from "../../src/workspace/errors.js";
 import type { CreateWorkspaceResult } from "../../src/workspace/index.js";
 import {
   createWorkspace,
   resolveWorkspacePath,
   validateWorkspace,
 } from "../../src/workspace/index.js";
-import { WorkspaceMissingEntryError } from "../../src/workspace/errors.js";
 
 async function createTempRepo(): Promise<string> {
   const dir = await mkdtemp(join(tmpdir(), "voratiq-init-"));

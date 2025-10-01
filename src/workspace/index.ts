@@ -9,8 +9,8 @@ import {
   resolvePath,
 } from "../utils/fs.js";
 import {
-  WorkspaceMissingEntryError,
   WorkspaceInvalidConfigError,
+  WorkspaceMissingEntryError,
 } from "./errors.js";
 
 export const VORATIQ_DIR = ".voratiq";
