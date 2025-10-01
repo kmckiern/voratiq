@@ -1,12 +1,12 @@
-import { readFile, writeFile, mkdir } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 
 import { voratiqConfigSchema } from "../cli/types.js";
 import {
+  ensureDirectoryExists,
+  ensureFileExists,
   pathExists,
-  resolvePath,
   relativeToRoot,
-  isDirectory,
-  isFile,
+  resolvePath,
 } from "../utils/path.js";
 
 export const VORATIQ_DIR = ".voratiq";
@@ -34,17 +34,25 @@ export class WorkspaceMissingEntryError extends WorkspaceError {
 }
 
 export class WorkspaceInvalidConfigError extends WorkspaceError {
-  constructor(public readonly filePath: string, public readonly details: string) {
+  constructor(
+    public readonly filePath: string,
+    public readonly details: string,
+  ) {
     super(`Invalid workspace config at ${filePath}: ${details}`);
     this.name = "WorkspaceInvalidConfigError";
   }
 }
 
-export function resolveWorkspacePath(root: string, ...segments: string[]): string {
+export function resolveWorkspacePath(
+  root: string,
+  ...segments: string[]
+): string {
   return resolvePath(root, VORATIQ_DIR, ...segments);
 }
 
-export async function createWorkspace(root: string): Promise<CreateWorkspaceResult> {
+export async function createWorkspace(
+  root: string,
+): Promise<CreateWorkspaceResult> {
   const createdDirectories: string[] = [];
   const createdFiles: string[] = [];
 
@@ -62,7 +70,9 @@ export async function createWorkspace(root: string): Promise<CreateWorkspaceResu
 
   const configPath = resolveWorkspacePath(root, VORATIQ_CONFIG_FILE);
   if (!(await pathExists(configPath))) {
-    await writeFile(configPath, `${JSON.stringify({}, null, 2)}\n`, { encoding: "utf8" });
+    await writeFile(configPath, `${JSON.stringify({}, null, 2)}\n`, {
+      encoding: "utf8",
+    });
     createdFiles.push(relativeToRoot(root, configPath));
   }
 
@@ -77,21 +87,21 @@ export async function createWorkspace(root: string): Promise<CreateWorkspaceResu
 
 export async function validateWorkspace(root: string): Promise<void> {
   const workspaceDir = resolveWorkspacePath(root);
-  await ensureDirectory(
+  await ensureDirectoryExists(
     workspaceDir,
-    new WorkspaceMissingEntryError(relativeToRoot(root, workspaceDir)),
+    () => new WorkspaceMissingEntryError(relativeToRoot(root, workspaceDir)),
   );
 
   const runsDir = resolveWorkspacePath(root, VORATIQ_RUNS_DIR);
-  await ensureDirectory(
+  await ensureDirectoryExists(
     runsDir,
-    new WorkspaceMissingEntryError(relativeToRoot(root, runsDir)),
+    () => new WorkspaceMissingEntryError(relativeToRoot(root, runsDir)),
   );
 
   const configPath = resolveWorkspacePath(root, VORATIQ_CONFIG_FILE);
-  await ensureFile(
+  await ensureFileExists(
     configPath,
-    new WorkspaceMissingEntryError(relativeToRoot(root, configPath)),
+    () => new WorkspaceMissingEntryError(relativeToRoot(root, configPath)),
   );
 
   const configRaw = await readFile(configPath, "utf8");
@@ -114,20 +124,8 @@ export async function validateWorkspace(root: string): Promise<void> {
   }
 
   const runsIndexPath = resolveWorkspacePath(root, VORATIQ_RUNS_FILE);
-  await ensureFile(
+  await ensureFileExists(
     runsIndexPath,
-    new WorkspaceMissingEntryError(relativeToRoot(root, runsIndexPath)),
+    () => new WorkspaceMissingEntryError(relativeToRoot(root, runsIndexPath)),
   );
-}
-
-async function ensureDirectory(path: string, error: WorkspaceError): Promise<void> {
-  if (!(await isDirectory(path))) {
-    throw error;
-  }
-}
-
-async function ensureFile(path: string, error: WorkspaceError): Promise<void> {
-  if (!(await isFile(path))) {
-    throw error;
-  }
 }

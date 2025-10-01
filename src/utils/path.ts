@@ -1,5 +1,5 @@
-import { access, stat } from "node:fs/promises";
 import { constants as fsConstants } from "node:fs";
+import { access, stat } from "node:fs/promises";
 import { join, relative } from "node:path";
 
 export const { F_OK } = fsConstants;
@@ -43,4 +43,28 @@ export function resolvePath(root: string, ...segments: string[]): string {
 
 export function relativeToRoot(root: string, target: string): string {
   return relative(root, target) || ".";
+}
+
+type ErrorOrFactory = Error | (() => Error);
+
+function resolveError(error: ErrorOrFactory): Error {
+  return typeof error === "function" ? error() : error;
+}
+
+export async function ensureDirectoryExists(
+  path: string,
+  error: ErrorOrFactory,
+): Promise<void> {
+  if (!(await isDirectory(path))) {
+    throw resolveError(error);
+  }
+}
+
+export async function ensureFileExists(
+  path: string,
+  error: ErrorOrFactory,
+): Promise<void> {
+  if (!(await isFile(path))) {
+    throw resolveError(error);
+  }
 }
