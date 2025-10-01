@@ -1,0 +1,27 @@
+```
+$ voratiq run --path tests/fixtures/hello-world.md
+
+Running agents against spec: tests/fixtures/hello-world.md
+Run ID: 20251001-143000-abcde
+
+claude-code:
+  - Running agent...
+  - Capturing diff...
+  - Status: succeeded
+  - Changes: 1 file changed, 10 insertions(+), 2 deletions(-)
+  - Artifacts:
+    - stdout: .voratiq/runs/20251001-143000-abcde/claude-code/stdout.log
+    - stderr: .voratiq/runs/20251001-143000-abcde/claude-code/stderr.log
+    - diff: .voratiq/runs/20251001-143000-abcde/claude-code/diff.patch
+
+codex:
+  - Running agent...
+  - Capturing diff...
+  - Status: failed
+  - Artifacts:
+    - stdout: .voratiq/runs/20251001-143000-abcde/codex/stdout.log
+    - stderr: .voratiq/runs/20251001-143000-abcde/codex/stderr.log
+
+Run complete. To review results, run:
+  voratiq review 20251001-143000-abcde
+```

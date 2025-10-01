@@ -8,6 +8,10 @@ import {
   relativeToRoot,
   resolvePath,
 } from "../utils/fs.js";
+import {
+  WorkspaceInvalidConfigError,
+  WorkspaceMissingEntryError,
+} from "./errors.js";
 
 export const VORATIQ_DIR = ".voratiq";
 export const VORATIQ_RUNS_DIR = "runs";
@@ -17,30 +21,6 @@ export const VORATIQ_RUNS_FILE = "runs.jsonl";
 export interface CreateWorkspaceResult {
   createdDirectories: string[];
   createdFiles: string[];
-}
-
-export class WorkspaceError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "WorkspaceError";
-  }
-}
-
-export class WorkspaceMissingEntryError extends WorkspaceError {
-  constructor(public readonly entryPath: string) {
-    super(`Missing workspace entry: ${entryPath}`);
-    this.name = "WorkspaceMissingEntryError";
-  }
-}
-
-export class WorkspaceInvalidConfigError extends WorkspaceError {
-  constructor(
-    public readonly filePath: string,
-    public readonly details: string,
-  ) {
-    super(`Invalid workspace config at ${filePath}: ${details}`);
-    this.name = "WorkspaceInvalidConfigError";
-  }
 }
 
 export function resolveWorkspacePath(

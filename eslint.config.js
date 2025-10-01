@@ -46,6 +46,7 @@ const createTsConfig = ({ files, project, includeJest }) => ({
 });
 
 export default [
+  { ignores: ["dist/**", "node_modules/**"] },
   createTsConfig({
     files: ["src/**/*.ts"],
     project: "./tsconfig.json",

@@ -2,14 +2,9 @@ import { constants as fsConstants } from "node:fs";
 import { access } from "node:fs/promises";
 import { join } from "node:path";
 
-const { F_OK } = fsConstants;
+import { GitRepositoryError } from "./errors.js";
 
-export class GitRepositoryError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "GitRepositoryError";
-  }
-}
+const { F_OK } = fsConstants;
 
 export async function assertGitRepository(root: string): Promise<void> {
   const gitPath = join(root, ".git");

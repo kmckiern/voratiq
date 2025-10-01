@@ -1,0 +1,30 @@
+```
+$ voratiq review
+
+Reviewing run 20251001-143500-fghij (spec: tests/fixtures/hello-world.md)
+
+claude-code:
+  - Status: succeeded
+  - Tests: passed
+  - Changes: 1 file changed, 10 insertions(+), 2 deletions(-)
+  - View diff: .voratiq/runs/20251001-143500-fghij/claude-code/diff.patch
+
+codex:
+  - Status: succeeded
+  - Tests: failed (exit code 1)
+  - Changes: 2 files changed, 15 insertions(+), 5 deletions(-)
+  - View diff: .voratiq/runs/20251001-143500-fghij/codex/diff.patch
+
+Choose the winning agent, or 'reject' to discard both.
+(claude-code, codex, reject) > claude-code
+
+Add an optional note for this decision:
+> Looks good. The tests pass and the changes are minimal.
+
+Decision recorded for run 20251001-143500-fghij:
+  - Winner: claude-code
+  - Note: Looks good. The tests pass and the changes are minimal.
+
+To apply the winning patch to your working tree, run:
+  voratiq apply 20251001-143500-fghij
+```

@@ -4,29 +4,9 @@ export interface InitSuccessOptions {
   result: CreateWorkspaceResult;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function renderInitSuccess({ result }: InitSuccessOptions): string {
-  const lines = ["Voratiq workspace ready."];
-
-  if (result.createdDirectories.length > 0) {
-    lines.push("  - Created directories:");
-    for (const entry of result.createdDirectories) {
-      lines.push(`      - ${entry}`);
-    }
-  }
-
-  if (result.createdFiles.length > 0) {
-    lines.push("  - Created files:");
-    for (const entry of result.createdFiles) {
-      lines.push(`      - ${entry}`);
-    }
-  }
-
-  if (
-    result.createdDirectories.length === 0 &&
-    result.createdFiles.length === 0
-  ) {
-    lines.push("  - Existing workspace validated; no changes made.");
-  }
+  const lines: string[] = [];
 
   return lines.join("\n");
 }

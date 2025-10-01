@@ -2,9 +2,9 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import { WorkspaceMissingEntryError } from "../../src/workspace/errors.js";
 import type { CreateWorkspaceResult } from "../../src/workspace/index.js";
 import {
-  WorkspaceMissingEntryError,
   createWorkspace,
   resolveWorkspacePath,
   validateWorkspace,
