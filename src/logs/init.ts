@@ -1,3 +1,4 @@
+import { normalizePathForDisplay } from "../utils/fs.js";
 import type { CreateWorkspaceResult } from "../workspace/index.js";
 
 export interface InitSuccessOptions {
@@ -17,21 +18,16 @@ export function renderInitSuccess({ result }: InitSuccessOptions): string {
   lines.push("\nVoratiq workspace created.");
 
   const directories = result.createdDirectories
-    .map(normalizePath)
+    .map(normalizePathForDisplay)
     .sort()
     .map((directory) => `  - ${directory}/`);
 
   const files = result.createdFiles
-    .map(normalizePath)
+    .map(normalizePathForDisplay)
     .sort()
     .map((file) => `  - ${file}`);
 
   lines.push(...directories, ...files);
 
   return lines.join("\n");
-}
-
-function normalizePath(value: string): string {
-  const normalized = value.replaceAll("\\", "/");
-  return normalized.replace(/\/+$/u, "");
 }

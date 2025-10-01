@@ -68,3 +68,8 @@ export async function ensureFileExists(
 function resolveError(error: ErrorOrFactory): Error {
   return typeof error === "function" ? error() : error;
 }
+
+export function normalizePathForDisplay(value: string): string {
+  const normalized = value.replaceAll("\\", "/");
+  return normalized.replace(/\/+$/u, "");
+}
