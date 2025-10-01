@@ -44,8 +44,8 @@ Example:
 export function renderInitSuccess(result: InitResult): string {
   return [
     "Voratiq workspace ready!",
-    `  • Created: ${result.createdDirectories.join(", ")}`,
-    `  • Config: ${result.configPath}`,
+    `  - Created: ${result.createdDirectories.join(", ")}`,
+    `  - Config: ${result.configPath}`,
   ].join("\n");
 }
 
