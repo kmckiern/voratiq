@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -62,6 +62,16 @@ describe("workspace bootstrap", () => {
 
     await expect(validateWorkspace(repoRoot)).rejects.toBeInstanceOf(
       WorkspaceMissingEntryError,
+    );
+  });
+
+  it("fails validation when config.json is empty", async () => {
+    await createWorkspace(repoRoot);
+    const configPath = resolveWorkspacePath(repoRoot, "config.json");
+    await writeFile(configPath, "");
+
+    await expect(validateWorkspace(repoRoot)).rejects.toThrow(
+      "config.json is empty",
     );
   });
 });
