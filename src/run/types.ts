@@ -12,7 +12,6 @@ export type RunSpecDescriptor = z.infer<typeof runSpecDescriptorSchema>;
 export const agentAssetPointersSchema = z.object({
   stdout: z.string().optional(),
   stderr: z.string().optional(),
-  transcript: z.string().optional(),
 });
 
 export type AgentAssetPointers = z.infer<typeof agentAssetPointersSchema>;
