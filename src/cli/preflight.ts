@@ -1,13 +1,14 @@
 import { isAbsolute, resolve } from "node:path";
+
 import { RunRecord } from "../run/types.js";
 import { ensureFileExists, relativeToRoot } from "../utils/fs.js";
 import { assertGitRepository } from "../utils/git.js";
 import {
-  resolveWorkspacePath,
-  validateWorkspace,
   VORATIQ_CONFIG_FILE,
   VORATIQ_RUNS_DIR,
   VORATIQ_RUNS_FILE,
+  resolveWorkspacePath,
+  validateWorkspace,
 } from "../workspace/index.js";
 import { RunNotFoundError, SpecNotFoundError } from "./errors.js";
 
@@ -50,6 +51,11 @@ export async function resolveCliContext(
   };
 
   return { root, workspacePaths };
+}
+
+export interface ResolvedSpecPath {
+  absolutePath: string;
+  displayPath: string;
 }
 
 export async function ensureSpecPath(
