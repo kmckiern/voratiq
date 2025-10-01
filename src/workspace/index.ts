@@ -5,9 +5,8 @@ import {
   ensureDirectoryExists,
   ensureFileExists,
   pathExists,
-  relativeToRoot,
-  resolvePath,
 } from "../utils/fs.js";
+import { relativeToRoot, resolvePath } from "../utils/path.js";
 import {
   WorkspaceInvalidConfigError,
   WorkspaceMissingEntryError,

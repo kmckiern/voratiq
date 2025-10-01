@@ -1,8 +1,9 @@
 import { isAbsolute, resolve } from "node:path";
 
 import { RunRecord } from "../run/types.js";
-import { ensureFileExists, relativeToRoot } from "../utils/fs.js";
+import { ensureFileExists } from "../utils/fs.js";
 import { assertGitRepository } from "../utils/git.js";
+import { relativeToRoot } from "../utils/path.js";
 import {
   VORATIQ_CONFIG_FILE,
   VORATIQ_RUNS_DIR,

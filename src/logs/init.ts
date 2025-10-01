@@ -1,4 +1,4 @@
-import { normalizePathForDisplay } from "../utils/fs.js";
+import { normalizePathForDisplay } from "../utils/path.js";
 import type { CreateWorkspaceResult } from "../workspace/index.js";
 
 export interface InitSuccessOptions {
