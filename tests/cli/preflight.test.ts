@@ -1,22 +1,16 @@
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-
 import { fs, vol } from "memfs";
 
-import { RunNotFoundError, SpecNotFoundError } from "../../src/cli/errors";
+import { RunNotFoundError, SpecNotFoundError } from "../../src/cli/errors.js";
 import {
   CliContext,
   ResolvedSpecPath,
   ensureRunId,
   ensureSpecPath,
   resolveCliContext,
-} from "../../src/cli/preflight";
-import type { RunRecord } from "../../src/run/types";
-import { GitRepositoryError } from "../../src/utils/git";
-import { WorkspaceMissingEntryError } from "../../src/workspace";
+} from "../../src/cli/preflight.js";
+import type { RunRecord } from "../../src/run/types.js";
+import { GitRepositoryError } from "../../src/utils/errors.js";
+import { WorkspaceMissingEntryError } from "../../src/workspace/errors.js";
 
 jest.mock("node:fs/promises", () => fs.promises);
 
