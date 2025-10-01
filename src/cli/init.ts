@@ -1,7 +1,6 @@
 import { renderInitSuccess } from "../logs/index.js";
-import { createWorkspace, validateWorkspace } from "../workspace/index.js";
-
 import { assertGitRepository } from "../utils/git.js";
+import { createWorkspace, validateWorkspace } from "../workspace/index.js";
 
 export async function runInitCommand(args: string[]): Promise<void> {
   if (args.length > 0) {
