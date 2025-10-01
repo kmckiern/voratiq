@@ -1,18 +1,9 @@
 import { constants as fsConstants } from "node:fs";
 import { access, stat } from "node:fs/promises";
-import { join, relative } from "node:path";
 
 export const { F_OK } = fsConstants;
 
 type ErrorOrFactory = Error | (() => Error);
-
-export function resolvePath(root: string, ...segments: string[]): string {
-  return join(root, ...segments);
-}
-
-export function relativeToRoot(root: string, target: string): string {
-  return relative(root, target) || ".";
-}
 
 export async function pathExists(path: string): Promise<boolean> {
   try {
