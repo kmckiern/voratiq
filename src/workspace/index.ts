@@ -1,8 +1,13 @@
-import { access, readFile, writeFile, mkdir, stat } from "node:fs/promises";
-import { constants as fsConstants } from "node:fs";
-import { join, relative } from "node:path";
+import { readFile, writeFile, mkdir } from "node:fs/promises";
 
 import { voratiqConfigSchema } from "../cli/types.js";
+import {
+  pathExists,
+  resolvePath,
+  relativeToRoot,
+  isDirectory,
+  isFile,
+} from "../utils/path.js";
 
 export const VORATIQ_DIR = ".voratiq";
 export const VORATIQ_RUNS_DIR = "runs";
@@ -29,40 +34,17 @@ export class WorkspaceMissingEntryError extends WorkspaceError {
 }
 
 export class WorkspaceInvalidConfigError extends WorkspaceError {
-  constructor(
-    public readonly filePath: string,
-    public readonly details: string,
-  ) {
+  constructor(public readonly filePath: string, public readonly details: string) {
     super(`Invalid workspace config at ${filePath}: ${details}`);
     this.name = "WorkspaceInvalidConfigError";
   }
 }
 
-const { F_OK } = fsConstants;
-
-async function pathExists(path: string): Promise<boolean> {
-  try {
-    await access(path, F_OK);
-    return true;
-  } catch {
-    return false;
-  }
+export function resolveWorkspacePath(root: string, ...segments: string[]): string {
+  return resolvePath(root, VORATIQ_DIR, ...segments);
 }
 
-function relativeToRoot(root: string, target: string): string {
-  return relative(root, target) || ".";
-}
-
-export function resolveWorkspacePath(
-  root: string,
-  ...segments: string[]
-): string {
-  return join(root, VORATIQ_DIR, ...segments);
-}
-
-export async function createWorkspace(
-  root: string,
-): Promise<CreateWorkspaceResult> {
+export async function createWorkspace(root: string): Promise<CreateWorkspaceResult> {
   const createdDirectories: string[] = [];
   const createdFiles: string[] = [];
 
@@ -80,9 +62,7 @@ export async function createWorkspace(
 
   const configPath = resolveWorkspacePath(root, VORATIQ_CONFIG_FILE);
   if (!(await pathExists(configPath))) {
-    await writeFile(configPath, `${JSON.stringify({}, null, 2)}\n`, {
-      encoding: "utf8",
-    });
+    await writeFile(configPath, `${JSON.stringify({}, null, 2)}\n`, { encoding: "utf8" });
     createdFiles.push(relativeToRoot(root, configPath));
   }
 
@@ -97,19 +77,19 @@ export async function createWorkspace(
 
 export async function validateWorkspace(root: string): Promise<void> {
   const workspaceDir = resolveWorkspacePath(root);
-  await assertDirectory(
+  await ensureDirectory(
     workspaceDir,
     new WorkspaceMissingEntryError(relativeToRoot(root, workspaceDir)),
   );
 
   const runsDir = resolveWorkspacePath(root, VORATIQ_RUNS_DIR);
-  await assertDirectory(
+  await ensureDirectory(
     runsDir,
     new WorkspaceMissingEntryError(relativeToRoot(root, runsDir)),
   );
 
   const configPath = resolveWorkspacePath(root, VORATIQ_CONFIG_FILE);
-  await assertFile(
+  await ensureFile(
     configPath,
     new WorkspaceMissingEntryError(relativeToRoot(root, configPath)),
   );
@@ -134,39 +114,20 @@ export async function validateWorkspace(root: string): Promise<void> {
   }
 
   const runsIndexPath = resolveWorkspacePath(root, VORATIQ_RUNS_FILE);
-  await assertFile(
+  await ensureFile(
     runsIndexPath,
     new WorkspaceMissingEntryError(relativeToRoot(root, runsIndexPath)),
   );
 }
 
-async function assertDirectory(
-  path: string,
-  error: WorkspaceError,
-): Promise<void> {
-  try {
-    const stats = await stat(path);
-    if (!stats.isDirectory()) {
-      throw error;
-    }
-  } catch (err) {
-    if ((err as { code?: string }).code === "ENOENT") {
-      throw error;
-    }
-    throw err;
+async function ensureDirectory(path: string, error: WorkspaceError): Promise<void> {
+  if (!(await isDirectory(path))) {
+    throw error;
   }
 }
 
-async function assertFile(path: string, error: WorkspaceError): Promise<void> {
-  try {
-    const stats = await stat(path);
-    if (!stats.isFile()) {
-      throw error;
-    }
-  } catch (err) {
-    if ((err as { code?: string }).code === "ENOENT") {
-      throw error;
-    }
-    throw err;
+async function ensureFile(path: string, error: WorkspaceError): Promise<void> {
+  if (!(await isFile(path))) {
+    throw error;
   }
 }
