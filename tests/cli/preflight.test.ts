@@ -12,7 +12,7 @@ import {
   ensureRunId,
   CliContext,
   ResolvedSpecPath,
-} from "../../src/cli/context";
+} from "../../src/cli/preflight";
 import { SpecNotFoundError, RunNotFoundError } from "../../src/cli/errors";
 import { GitRepositoryError } from "../../src/utils/git";
 import { WorkspaceMissingEntryError } from "../../src/workspace";

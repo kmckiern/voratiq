@@ -1,6 +1,6 @@
 import { renderInitSuccess } from "../logs/index.js";
 import { createWorkspace } from "../workspace/index.js";
-import { resolveCliContext } from "./context.js";
+import { resolveCliContext } from "./preflight.js";
 
 export async function runInitCommand(args: string[]): Promise<void> {
   if (args.length > 0) {
