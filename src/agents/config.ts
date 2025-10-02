@@ -38,9 +38,10 @@ function loadAgentDefinition(
   const argv = parseArgv(argvValue, agentId, prefix);
 
   const modelValue = env[`${prefix}_MODEL`];
-  const model = typeof modelValue === "string" && modelValue.length > 0
-    ? modelValue
-    : agentId;
+  const model =
+    typeof modelValue === "string" && modelValue.length > 0
+      ? modelValue
+      : agentId;
 
   return {
     id: agentId,
@@ -51,17 +52,11 @@ function loadAgentDefinition(
 }
 
 function buildEnvPrefix(agentId: AgentId): string {
-  const normalized = agentId
-    .toUpperCase()
-    .replaceAll(/[^A-Z0-9]/gu, "_");
+  const normalized = agentId.toUpperCase().replaceAll(/[^A-Z0-9]/gu, "_");
   return `VORATIQ_AGENT_${normalized}`;
 }
 
-function parseArgv(
-  value: unknown,
-  agentId: AgentId,
-  prefix: string,
-): string[] {
+function parseArgv(value: unknown, agentId: AgentId, prefix: string): string[] {
   if (typeof value !== "string" || value.trim().length === 0) {
     return [];
   }
@@ -80,5 +75,7 @@ function parseArgv(
 }
 
 function isStringArray(value: unknown): value is string[] {
-  return Array.isArray(value) && value.every((entry) => typeof entry === "string");
+  return (
+    Array.isArray(value) && value.every((entry) => typeof entry === "string")
+  );
 }

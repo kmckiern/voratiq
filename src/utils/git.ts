@@ -87,8 +87,12 @@ export interface GitCommitOptions {
 }
 
 export async function gitCommitAll(options: GitCommitOptions): Promise<void> {
-  const { cwd, message, authorEmail = "cli@voratiq", authorName = "Voratiq" } =
-    options;
+  const {
+    cwd,
+    message,
+    authorEmail = "cli@voratiq",
+    authorName = "Voratiq",
+  } = options;
 
   await runGitCommand(
     [
@@ -122,12 +126,10 @@ export async function gitDiffShortStat(
   return output.length === 0 ? undefined : output;
 }
 
-export async function gitDiff(
-  options: GitDiffStatOptions,
-): Promise<string> {
+export async function gitDiff(options: GitDiffStatOptions): Promise<string> {
   const { cwd, baseRevision, targetRevision } = options;
-  return runGitCommand(
-    ["diff", "--no-color", baseRevision, targetRevision],
-    { cwd, trim: false },
-  );
+  return runGitCommand(["diff", "--no-color", baseRevision, targetRevision], {
+    cwd,
+    trim: false,
+  });
 }

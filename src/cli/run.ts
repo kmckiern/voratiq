@@ -1,12 +1,7 @@
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { createWriteStream } from "node:fs";
-import {
-  mkdir,
-  readFile,
-  rm,
-  writeFile,
-} from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 
 import { loadAgentCatalog } from "../agents/config.js";
 import type { AgentDefinition } from "../agents/types.js";
@@ -293,7 +288,8 @@ async function executeAgent(
 
     if (hasChanges) {
       const message = summaryText
-        ? summaryText.split("\n")[0]?.trim() || fallbackCommitMessage(runId, agent.id)
+        ? summaryText.split("\n")[0]?.trim() ||
+          fallbackCommitMessage(runId, agent.id)
         : fallbackCommitMessage(runId, agent.id);
 
       await gitCommitAll({
@@ -313,9 +309,7 @@ async function executeAgent(
         targetRevision: "HEAD",
       });
       await writeFile(diffPath, diffContent, { encoding: "utf8" });
-      diffRelative = normalizePathForDisplay(
-        relativeToRoot(root, diffPath),
-      );
+      diffRelative = normalizePathForDisplay(relativeToRoot(root, diffPath));
 
       changeSummary = await gitDiffShortStat({
         cwd: workspacePath,
@@ -381,7 +375,7 @@ async function executeAgent(
     tests: testsResult,
     error:
       status === "failed"
-        ? agentExecution.errorMessage ?? "Agent exited with failure"
+        ? (agentExecution.errorMessage ?? "Agent exited with failure")
         : undefined,
   };
 
@@ -446,21 +440,18 @@ async function runAgentProcess(
       reject(error);
     });
 
-    child.on(
-      "close",
-      (code: number | null, signal: string | null) => {
-        stdoutStream.end();
-        stderrStream.end();
+    child.on("close", (code: number | null, signal: string | null) => {
+      stdoutStream.end();
+      stderrStream.end();
 
-        if (signal) {
-          errorMessage = `Agent terminated by signal ${signal}`;
-        } else if (code && code !== 0) {
-          errorMessage = `Agent exited with code ${code}`;
-        }
+      if (signal) {
+        errorMessage = `Agent terminated by signal ${signal}`;
+      } else if (code && code !== 0) {
+        errorMessage = `Agent exited with code ${code}`;
+      }
 
-        resolve({ exitCode: code ?? 0, errorMessage });
-      },
-    );
+      resolve({ exitCode: code ?? 0, errorMessage });
+    });
   });
 }
 
@@ -549,9 +540,7 @@ async function maybeRunTests(
         status,
         command: testCommand,
         exitCode: code ?? 0,
-        logPath: normalizePathForDisplay(
-          relativeToRoot(root, testsLogPath),
-        ),
+        logPath: normalizePathForDisplay(relativeToRoot(root, testsLogPath)),
       });
     });
   });

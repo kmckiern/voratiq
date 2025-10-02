@@ -25,14 +25,17 @@ export interface RenderRunSummaryOptions {
   agentSummaries: AgentLogSummary[];
 }
 
-export function renderRunSummary(
-  options: RenderRunSummaryOptions,
-): string {
+export function renderRunSummary(options: RenderRunSummaryOptions): string {
   const { specPath, runId, agentSummaries } = options;
 
   const lines: string[] = [];
 
-  lines.push("", `Running agents against spec: ${specPath}`, `Run ID: ${runId}`, "");
+  lines.push(
+    "",
+    `Running agents against spec: ${specPath}`,
+    `Run ID: ${runId}`,
+    "",
+  );
 
   agentSummaries.forEach((summary, index) => {
     if (index > 0) {

@@ -30,11 +30,7 @@ export const agentStatusSchema = z.enum([
 
 export type AgentStatus = z.infer<typeof agentStatusSchema>;
 
-export const agentTestStatusSchema = z.enum([
-  "skipped",
-  "passed",
-  "failed",
-]);
+export const agentTestStatusSchema = z.enum(["skipped", "passed", "failed"]);
 
 export type AgentTestStatus = z.infer<typeof agentTestStatusSchema>;
 
