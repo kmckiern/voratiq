@@ -7,28 +7,28 @@ import {
   KNOWN_AGENT_IDS,
 } from "./types.js";
 
+type AgentEnvironment = Record<string, unknown>;
+
 export interface LoadAgentCatalogOptions {
-  env?: NodeJS.ProcessEnv;
+  env?: AgentEnvironment;
 }
 
 export function loadAgentCatalog(
   options: LoadAgentCatalogOptions = {},
 ): AgentCatalog {
-  const { env = process.env } = options;
+  const env: AgentEnvironment = options.env ?? process.env;
 
-  return KNOWN_AGENT_IDS.map((agentId) =>
-    loadAgentDefinition(agentId, env),
-  );
+  return KNOWN_AGENT_IDS.map((agentId) => loadAgentDefinition(agentId, env));
 }
 
 function loadAgentDefinition(
   agentId: AgentId,
-  env: NodeJS.ProcessEnv,
+  env: AgentEnvironment,
 ): AgentDefinition {
   const prefix = buildEnvPrefix(agentId);
 
-  const binary = env[`${prefix}_BINARY`];
-  if (!binary) {
+  const binaryValue = env[`${prefix}_BINARY`];
+  if (typeof binaryValue !== "string" || binaryValue.length === 0) {
     throw new Error(
       `Missing environment variable: ${prefix}_BINARY for agent ${agentId}`,
     );
@@ -37,12 +37,15 @@ function loadAgentDefinition(
   const argvValue = env[`${prefix}_ARGV`];
   const argv = parseArgv(argvValue, agentId, prefix);
 
-  const model = env[`${prefix}_MODEL`] ?? agentId;
+  const modelValue = env[`${prefix}_MODEL`];
+  const model = typeof modelValue === "string" && modelValue.length > 0
+    ? modelValue
+    : agentId;
 
   return {
     id: agentId,
     model,
-    binaryPath: binary,
+    binaryPath: binaryValue,
     argv,
   } satisfies AgentDefinition;
 }
@@ -55,17 +58,17 @@ function buildEnvPrefix(agentId: AgentId): string {
 }
 
 function parseArgv(
-  value: string | undefined,
+  value: unknown,
   agentId: AgentId,
   prefix: string,
 ): string[] {
-  if (!value) {
+  if (typeof value !== "string" || value.trim().length === 0) {
     return [];
   }
 
   try {
-    const parsed = JSON.parse(value);
-    if (!Array.isArray(parsed) || !parsed.every((entry) => typeof entry === "string")) {
+    const parsed = JSON.parse(value) as unknown;
+    if (!isStringArray(parsed)) {
       throw new Error();
     }
     return parsed;
@@ -74,4 +77,8 @@ function parseArgv(
       `Invalid JSON array provided via ${prefix}_ARGV for agent ${agentId}`,
     );
   }
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((entry) => typeof entry === "string");
 }

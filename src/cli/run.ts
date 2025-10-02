@@ -1,4 +1,3 @@
-import type { ChildProcessWithoutNullStreams } from "node:child_process";
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { createWriteStream } from "node:fs";
@@ -334,12 +333,10 @@ async function executeAgent(
     Boolean(testCommand) && !skipTests && status === "succeeded";
 
   const testsResult = await maybeRunTests({
-    skipTests,
     testCommand,
     cwd: workspacePath,
     testsLogPath,
     root,
-    agentSucceeded: status === "succeeded",
     attemptedTests,
   });
 
@@ -421,13 +418,24 @@ async function runAgentProcess(
       cwd,
       env: process.env,
       stdio: ["pipe", "pipe", "pipe"],
-    }) as ChildProcessWithoutNullStreams;
+    });
 
-    child.stdout.pipe(stdoutStream);
-    child.stderr.pipe(stderrStream);
+    const stdin = child.stdin;
+    const stdout = child.stdout;
+    const stderr = child.stderr;
 
-    child.stdin.write(prompt);
-    child.stdin.end();
+    if (!stdin || !stdout || !stderr) {
+      stdoutStream.end();
+      stderrStream.end();
+      reject(new Error("Failed to capture agent process streams"));
+      return;
+    }
+
+    stdout.pipe(stdoutStream);
+    stderr.pipe(stderrStream);
+
+    stdin.write(prompt);
+    stdin.end();
 
     let errorMessage: string | undefined;
 
@@ -440,7 +448,7 @@ async function runAgentProcess(
 
     child.on(
       "close",
-      (code: number | null, signal: NodeJS.Signals | null) => {
+      (code: number | null, signal: string | null) => {
         stdoutStream.end();
         stderrStream.end();
 
@@ -491,36 +499,26 @@ async function harvestSummary(
 }
 
 interface MaybeRunTestsOptions {
-  skipTests: boolean;
   testCommand?: string;
   cwd: string;
   testsLogPath: string;
   root: string;
-  agentSucceeded: boolean;
   attemptedTests: boolean;
 }
 
 async function maybeRunTests(
   options: MaybeRunTestsOptions,
 ): Promise<AgentTestResult | undefined> {
-  const {
-    skipTests,
-    testCommand,
-    cwd,
-    testsLogPath,
-    root,
-    agentSucceeded,
-    attemptedTests,
-  } = options;
+  const { testCommand, cwd, testsLogPath, root, attemptedTests } = options;
 
-  if (!attemptedTests) {
+  if (!attemptedTests || !testCommand) {
     return undefined;
   }
 
   const logStream = createWriteStream(testsLogPath, { flags: "w" });
 
   const result = await new Promise<AgentTestResult>((resolve, reject) => {
-    const child = spawn(testCommand!, {
+    const child = spawn(testCommand, {
       cwd,
       shell: true,
       stdio: ["ignore", "pipe", "pipe"],

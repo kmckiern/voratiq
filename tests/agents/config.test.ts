@@ -9,7 +9,7 @@ describe("loadAgentCatalog", () => {
       VORATIQ_AGENT_CODEX_BINARY: "/bin/codex",
       VORATIQ_AGENT_CODEX_ARGV: JSON.stringify(["--json"]),
       VORATIQ_AGENT_CODEX_MODEL: "gpt-codex",
-    } satisfies NodeJS.ProcessEnv;
+    };
 
     const catalog = loadAgentCatalog({ env });
 
