@@ -69,6 +69,7 @@ export const runRecordSchema = z.object({
   createdAt: z.string(),
   baseRevision: z.string(),
   rootPath: z.string(),
+  runPath: z.string().optional(),
   agents: z.array(agentInvocationRecordSchema),
 });
 
