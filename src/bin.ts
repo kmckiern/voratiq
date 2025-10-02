@@ -3,6 +3,7 @@
 import process from "node:process";
 
 import { runInitCommand } from "./cli/init.js";
+import { runRunCommand } from "./cli/run.js";
 
 async function main(): Promise<void> {
   const [, , command, ...args] = process.argv;
@@ -16,6 +17,9 @@ async function main(): Promise<void> {
     switch (command) {
       case "init":
         await runInitCommand(args);
+        return;
+      case "run":
+        await runRunCommand(args);
         return;
       default:
         throw new Error(`Unknown command: ${command}`);
@@ -33,6 +37,7 @@ function printHelp(): void {
     "",
     "Commands:",
     "  init       Bootstrap the Voratiq workspace",
+    "  run        Execute configured agents against a spec",
   ];
   process.stdout.write(`${lines.join("\n")}\n`);
 }

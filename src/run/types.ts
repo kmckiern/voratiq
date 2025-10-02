@@ -10,8 +10,12 @@ export const runSpecDescriptorSchema = z.object({
 export type RunSpecDescriptor = z.infer<typeof runSpecDescriptorSchema>;
 
 export const agentAssetPointersSchema = z.object({
-  stdout: z.string().optional(),
-  stderr: z.string().optional(),
+  stdout: z.string(),
+  stderr: z.string(),
+  workspace: z.string(),
+  diff: z.string().optional(),
+  summary: z.string().optional(),
+  tests: z.string().optional(),
 });
 
 export type AgentAssetPointers = z.infer<typeof agentAssetPointersSchema>;
@@ -26,6 +30,23 @@ export const agentStatusSchema = z.enum([
 
 export type AgentStatus = z.infer<typeof agentStatusSchema>;
 
+export const agentTestStatusSchema = z.enum([
+  "skipped",
+  "passed",
+  "failed",
+]);
+
+export type AgentTestStatus = z.infer<typeof agentTestStatusSchema>;
+
+export const agentTestResultSchema = z.object({
+  status: agentTestStatusSchema,
+  command: z.string().optional(),
+  exitCode: z.number().nullable().optional(),
+  logPath: z.string().optional(),
+});
+
+export type AgentTestResult = z.infer<typeof agentTestResultSchema>;
+
 export const agentInvocationRecordSchema = z.object({
   agentId: agentIdSchema,
   model: z.string(),
@@ -33,10 +54,15 @@ export const agentInvocationRecordSchema = z.object({
   argv: z.array(z.string()),
   prompt: z.string(),
   workspacePath: z.string(),
-  startedAt: z.string().optional(),
-  completedAt: z.string().optional(),
+  startedAt: z.string(),
+  completedAt: z.string(),
   status: agentStatusSchema,
+  summary: z.string().optional(),
+  commit: z.string().optional(),
+  changeSummary: z.string().optional(),
   assets: agentAssetPointersSchema,
+  tests: agentTestResultSchema.optional(),
+  error: z.string().optional(),
 });
 
 export type AgentInvocationRecord = z.infer<typeof agentInvocationRecordSchema>;
