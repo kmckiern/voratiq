@@ -1,6 +1,7 @@
 import { renderRunSummary } from "../logs/index.js";
 import { executeRunCommand } from "../run/command.js";
-import { ensureNonEmptyString, requireFlagValue } from "../utils/args.js";
+import { requireFlagValue } from "../utils/args.js";
+import { ensureNonEmptyString } from "../utils/validators.js";
 import { ensureSpecPath, resolveCliContext } from "./preflight.js";
 
 interface RunCliOptions {

@@ -5,7 +5,6 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 
 import { loadAgentCatalog } from "../agents/config.js";
 import type { AgentDefinition, AgentId } from "../agents/types.js";
-import { ensureNonEmptyString } from "../utils/args.js";
 import { toErrorMessage } from "../utils/errors.js";
 import { pathExists } from "../utils/fs.js";
 import {
@@ -23,6 +22,7 @@ import {
   relativeToRoot,
   resolvePath,
 } from "../utils/path.js";
+import { ensureNonEmptyString } from "../utils/validators.js";
 import {
   AgentProcessError,
   GitOperationError,
