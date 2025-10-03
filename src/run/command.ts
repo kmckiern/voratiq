@@ -6,6 +6,7 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { loadAgentCatalog } from "../agents/config.js";
 import type { AgentDefinition, AgentId } from "../agents/types.js";
 import { ensureNonEmptyString } from "../utils/args.js";
+import { toErrorMessage } from "../utils/errors.js";
 import { pathExists } from "../utils/fs.js";
 import {
   createWorktree,
@@ -30,7 +31,6 @@ import {
   TestCommandError,
   WorkspaceSetupError,
 } from "./errors.js";
-import { toErrorMessage } from "../utils/errors.js";
 import { generateRunId } from "./id.js";
 import { buildAgentPrompt } from "./prompts.js";
 import { appendRunRecord } from "./records.js";

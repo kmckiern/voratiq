@@ -2,9 +2,9 @@
 
 import process from "node:process";
 
-import { toErrorMessage } from "./utils/errors.js";
 import { runInitCommand } from "./cli/init.js";
 import { runRunCommand } from "./cli/run.js";
+import { toErrorMessage } from "./utils/errors.js";
 
 async function main(): Promise<void> {
   const [, , command, ...args] = process.argv;

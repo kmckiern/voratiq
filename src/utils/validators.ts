@@ -18,5 +18,5 @@ export function ensureStringArray(
   ) {
     throw new Error(errorMessage);
   }
-  return value;
+  return value as string[];
 }

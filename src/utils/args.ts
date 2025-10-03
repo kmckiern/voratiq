@@ -1,5 +1,4 @@
 import { ensureNonEmptyString } from "./validators.js";
-export { ensureNonEmptyString } from "./validators.js";
 
 export interface RequiredFlagValueResult {
   value: string;
