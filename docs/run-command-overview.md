@@ -25,9 +25,10 @@ This document describes how the `voratiq run` command orchestrates agents, manag
 
 3. **Agent invocation**
    - Spawn the agent binary with static argv plus a generated prompt that instructs it to edit files only and write a summary to `.summary.txt` inside the workspace.
-   - Provide the environment variables described in the headless agent guide, including `VORATIQ_AGENT_MODEL`, and replace any `{{MODEL}}` placeholders in argv before invoking the binary.
-   - Wait for the process to exit; no retries or interactive prompts are issued.
-   - Continue to later agents even if an earlier invocation fails. Failures are recorded and surfaced, but they do not stop the remaining agents from running.
+
+- Provide the environment variables described in `docs/agents/README.md`, including `VORATIQ_AGENT_MODEL`. Voratiq replaces `{{MODEL}}` placeholders automatically when the agent defaults include them.
+- Wait for the process to exit; no retries or interactive prompts are issued.
+- Continue to later agents even if an earlier invocation fails. Failures are recorded and surfaced, but they do not stop the remaining agents from running.
 
 4. **Harvesting**
    - Read the summary file, copy its contents to `<agent>/summary.txt`, and remove the workspace copy.
