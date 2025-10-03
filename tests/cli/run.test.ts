@@ -210,7 +210,7 @@ describe("voratiq run (integration)", () => {
     );
     expect(failingRecord?.status).toBe("failed");
     expect(failingRecord?.error).toBe(
-      "Agent exited before modifying the workspace",
+      "Agent exited before modifying the workspace; workspace remained unchanged",
     );
   });
 
@@ -238,11 +238,15 @@ describe("voratiq run (integration)", () => {
     );
     expect(summarylessAgent).toBeDefined();
     expect(summarylessAgent?.status).toBe("failed");
-    expect(summarylessAgent?.error).toBe("Agent did not produce .summary.txt");
+    expect(summarylessAgent?.error).toBe(
+      "Agent did not produce .summary.txt; workspace contains uncommitted edits (inspect artifacts)",
+    );
     expect(summarylessAgent?.diffAttempted).toBe(false);
 
     const summaryOutput = renderRunSummary(runReport);
-    expect(summaryOutput).toContain("Agent did not produce .summary.txt");
+    expect(summaryOutput).toContain(
+      "Agent did not produce .summary.txt; workspace contains uncommitted edits (inspect artifacts)",
+    );
   });
 
   it("marks signal-terminated agents as failures", async () => {
@@ -270,7 +274,7 @@ describe("voratiq run (integration)", () => {
     expect(signalAgent).toBeDefined();
     expect(signalAgent?.status).toBe("failed");
     expect(signalAgent?.error).toBe(
-      "Agent exited before modifying the workspace",
+      "Agent exited before modifying the workspace; workspace remained unchanged",
     );
   });
 

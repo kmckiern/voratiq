@@ -4,19 +4,9 @@ import { createWriteStream } from "node:fs";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 
 import { loadAgentCatalog } from "../agents/config.js";
-import type { AgentDefinition } from "../agents/types.js";
-import type { AgentId } from "../agents/types.js";
-import {
-  agentTestResultSchema,
-  type AgentInvocationRecord,
-  type AgentReport,
-  type AgentTestResult,
-  type RunRecord,
-  type RunReport,
-} from "./types.js";
-import { appendRunRecord } from "./records.js";
-import { buildAgentPrompt } from "./prompts.js";
-import { generateRunId } from "./id.js";
+import type { AgentDefinition, AgentId } from "../agents/types.js";
+import { ensureNonEmptyString } from "../utils/args.js";
+import { pathExists } from "../utils/fs.js";
 import {
   createWorktree,
   getHeadRevision,
@@ -32,8 +22,6 @@ import {
   relativeToRoot,
   resolvePath,
 } from "../utils/path.js";
-import { pathExists } from "../utils/fs.js";
-import { ensureNonEmptyString } from "../utils/args.js";
 import {
   AgentProcessError,
   GitOperationError,
@@ -42,6 +30,17 @@ import {
   TestCommandError,
   WorkspaceSetupError,
 } from "./errors.js";
+import { generateRunId } from "./id.js";
+import { buildAgentPrompt } from "./prompts.js";
+import { appendRunRecord } from "./records.js";
+import {
+  agentTestResultSchema,
+  type AgentInvocationRecord,
+  type AgentReport,
+  type AgentTestResult,
+  type RunRecord,
+  type RunReport,
+} from "./types.js";
 
 const STDOUT_FILENAME = "stdout.log" as const;
 const STDERR_FILENAME = "stderr.log" as const;
@@ -239,10 +238,11 @@ async function executeAgent(
       agentId: agent.id,
       runId,
     });
+    await agentContext.recordWorkspaceBaseline();
   } catch (error) {
     const failure =
       error instanceof RunCommandError ? error : ensureWorkspaceError(error);
-    return agentContext.failWith(failure);
+    return await agentContext.failWith(failure);
   }
 
   try {
@@ -280,7 +280,7 @@ async function executeAgent(
 
   if (agentContext.isFailed()) {
     agentContext.setCompleted();
-    return agentContext.finalize();
+    return await agentContext.finalize();
   }
 
   try {
@@ -296,7 +296,7 @@ async function executeAgent(
     agentContext.applyArtifacts(artifacts);
   } catch (rawError) {
     const failure = classifyPostProcessError(rawError);
-    return agentContext.failWith(failure);
+    return await agentContext.failWith(failure);
   }
 
   if (testCommand) {
@@ -312,7 +312,7 @@ async function executeAgent(
   }
 
   agentContext.setCompleted();
-  return agentContext.finalize();
+  return await agentContext.finalize();
 }
 
 interface BuildAgentRecordOptions {
@@ -875,6 +875,9 @@ class AgentRunContext {
   public testsResult: AgentTestResult | undefined;
   public errorMessage: string | undefined;
   private completedAt: string | undefined;
+  private workspaceCleanAtStart = false;
+  private workspaceModifiedOnFailure: boolean | undefined;
+  private workspaceAnnotationApplied = false;
 
   constructor(
     private readonly params: {
@@ -891,10 +894,10 @@ class AgentRunContext {
     this.errorMessage = error.messageForDisplay();
   }
 
-  public failWith(error: RunCommandError): AgentExecutionResult {
+  public async failWith(error: RunCommandError): Promise<AgentExecutionResult> {
     this.markFailure(error);
     this.setCompleted();
-    return this.finalize();
+    return await this.finalize();
   }
 
   public isFailed(): boolean {
@@ -927,8 +930,33 @@ class AgentRunContext {
     }
   }
 
-  public finalize(): AgentExecutionResult {
+  public async recordWorkspaceBaseline(): Promise<void> {
+    try {
+      this.workspaceCleanAtStart = !(await hasWorkspaceModifications(
+        this.params.workspacePaths.workspacePath,
+      ));
+    } catch (error) {
+      throw ensureWorkspaceError(error);
+    }
+  }
+
+  public async finalize(): Promise<AgentExecutionResult> {
     this.setCompleted();
+
+    if (this.isFailed() && !this.workspaceAnnotationApplied) {
+      // Only the orchestrator knows whether the workspace stayed clean or
+      // picked up edits. Annotate the error message here so the underlying
+      // error classes remain focused on what failed, and this layer adds
+      // the state context reviewers care about.
+      await this.updateWorkspaceFailureState();
+      if (this.errorMessage) {
+        this.errorMessage = annotateWorkspaceFailureMessage(this.errorMessage, {
+          workspaceCleanAtStart: this.workspaceCleanAtStart,
+          workspaceModifiedOnFailure: this.workspaceModifiedOnFailure,
+        });
+        this.workspaceAnnotationApplied = true;
+      }
+    }
 
     const { agent, agentArgv, prompt, startedAt, workspacePaths } = this.params;
     const record = buildAgentRecord({
@@ -951,6 +979,16 @@ class AgentRunContext {
     });
 
     return finalizeAgentResult(record, this.state);
+  }
+
+  private async updateWorkspaceFailureState(): Promise<void> {
+    try {
+      this.workspaceModifiedOnFailure = await hasWorkspaceModifications(
+        this.params.workspacePaths.workspacePath,
+      );
+    } catch {
+      this.workspaceModifiedOnFailure = undefined;
+    }
   }
 }
 
@@ -1038,6 +1076,31 @@ function buildAgentArgv(
   }
 
   return [...argv, prompt];
+}
+
+function annotateWorkspaceFailureMessage(
+  message: string,
+  options: {
+    workspaceCleanAtStart: boolean;
+    workspaceModifiedOnFailure: boolean | undefined;
+  },
+): string {
+  if (!message) {
+    return message;
+  }
+
+  if (options.workspaceModifiedOnFailure === true) {
+    return `${message}; workspace contains uncommitted edits (inspect artifacts)`;
+  }
+
+  if (
+    options.workspaceModifiedOnFailure === false &&
+    options.workspaceCleanAtStart
+  ) {
+    return `${message}; workspace remained unchanged`;
+  }
+
+  return message;
 }
 
 export { toAgentReport, toRunReport };

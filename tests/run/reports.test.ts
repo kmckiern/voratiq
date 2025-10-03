@@ -86,7 +86,8 @@ describe("report mapping helpers", () => {
         workspace: ".voratiq/runs/bad/codex/workspace",
       },
       tests: undefined,
-      error: "Agent exited before modifying the workspace",
+      error:
+        "Agent exited before modifying the workspace; workspace remained unchanged",
       diffAttempted: false,
       diffCaptured: false,
       testsAttempted: false,
