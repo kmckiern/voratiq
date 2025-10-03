@@ -5,7 +5,7 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 
 import { loadAgentCatalog } from "../agents/config.js";
 import type { AgentDefinition, AgentId } from "../agents/types.js";
-import { ensureNonEmptyString } from "../utils/args.js";
+import { toErrorMessage } from "../utils/errors.js";
 import { pathExists } from "../utils/fs.js";
 import {
   createWorktree,
@@ -22,6 +22,7 @@ import {
   relativeToRoot,
   resolvePath,
 } from "../utils/path.js";
+import { ensureNonEmptyString } from "../utils/validators.js";
 import {
   AgentProcessError,
   GitOperationError,
@@ -433,8 +434,10 @@ async function runGitStep<T>(
   try {
     return await step();
   } catch (error) {
-    const detail = error instanceof Error ? error.message : String(error);
-    throw new GitOperationError({ operation: operationMessage, detail });
+    throw new GitOperationError({
+      operation: operationMessage,
+      detail: toErrorMessage(error),
+    });
   }
 }
 
@@ -443,20 +446,14 @@ function classifyPostProcessError(error: unknown): RunCommandError {
     return error;
   }
 
-  if (error instanceof Error && error.message?.includes(".summary.txt")) {
+  const detail = toErrorMessage(error);
+  if (detail.includes(".summary.txt")) {
     return new SummaryMissingError();
-  }
-
-  if (error instanceof Error) {
-    return new GitOperationError({
-      operation: "Run finalization failed",
-      detail: error.message,
-    });
   }
 
   return new GitOperationError({
     operation: "Run finalization failed",
-    detail: String(error),
+    detail,
   });
 }
 
@@ -472,7 +469,7 @@ async function hasWorkspaceModifications(
   } catch (error) {
     throw new GitOperationError({
       operation: "Git status failed",
-      detail: error instanceof Error ? error.message : String(error),
+      detail: toErrorMessage(error),
     });
   }
 }
@@ -536,7 +533,7 @@ async function runTests(options: RunTestsOptions): Promise<AgentTestResult> {
       throw error;
     }
     throw new TestCommandError({
-      detail: error instanceof Error ? error.message : String(error),
+      detail: toErrorMessage(error),
     });
   }
 }
@@ -638,9 +635,7 @@ async function harvestSummary(
   try {
     raw = await readFile(workspaceSummaryPath, "utf8");
   } catch (error) {
-    throw new SummaryMissingError(
-      error instanceof Error ? error.message : String(error),
-    );
+    throw new SummaryMissingError(toErrorMessage(error));
   }
 
   const trimmed = raw.trim();
@@ -658,8 +653,7 @@ async function harvestSummary(
 }
 
 function ensureWorkspaceError(error: unknown): WorkspaceSetupError {
-  const detail = error instanceof Error ? error.message : String(error);
-  return new WorkspaceSetupError({ detail });
+  return new WorkspaceSetupError({ detail: toErrorMessage(error) });
 }
 
 function buildAgentWorkspacePaths(options: {

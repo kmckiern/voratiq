@@ -4,6 +4,7 @@ import process from "node:process";
 
 import { runInitCommand } from "./cli/init.js";
 import { runRunCommand } from "./cli/run.js";
+import { toErrorMessage } from "./utils/errors.js";
 
 async function main(): Promise<void> {
   const [, , command, ...args] = process.argv;
@@ -25,8 +26,7 @@ async function main(): Promise<void> {
         throw new Error(`Unknown command: ${command}`);
     }
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    process.stderr.write(`${message}\n`);
+    process.stderr.write(`${toErrorMessage(error)}\n`);
     process.exitCode = 1;
   }
 }
