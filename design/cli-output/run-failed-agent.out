@@ -10,7 +10,7 @@ claude-code:
   - Running tests...
   - Status: succeeded
   - Tests: passed
-  - Changes: 1 file changed, 10 insertions(+), 2 deletions(-)
+  - Changes: 1 file changed, 1 insertion(+)
   - Artifacts:
     - stdout: .voratiq/runs/20251003-052332-ikneb/claude-code/stdout.log
     - stderr: .voratiq/runs/20251003-052332-ikneb/claude-code/stderr.log
@@ -19,7 +19,7 @@ claude-code:
 
 codex:
   - Running agent...
-  - Status: failed (Agent exited before modifying the workspace; workspace remained unchanged)
+  - Status: failed (Agent failed to modify the workspace)
   - Artifacts:
     - stdout: .voratiq/runs/20251003-052332-ikneb/codex/stdout.log
     - stderr: .voratiq/runs/20251003-052332-ikneb/codex/stderr.log
