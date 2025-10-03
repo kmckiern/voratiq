@@ -876,13 +876,15 @@ class AgentRunContext {
   public errorMessage: string | undefined;
   private completedAt: string | undefined;
 
-  constructor(private readonly params: {
-    agent: AgentDefinition;
-    agentArgv: string[];
-    prompt: string;
-    startedAt: string;
-    workspacePaths: AgentWorkspacePaths;
-  }) {}
+  constructor(
+    private readonly params: {
+      agent: AgentDefinition;
+      agentArgv: string[];
+      prompt: string;
+      startedAt: string;
+      workspacePaths: AgentWorkspacePaths;
+    },
+  ) {}
 
   public markFailure(error: RunCommandError): void {
     this.status = "failed";
