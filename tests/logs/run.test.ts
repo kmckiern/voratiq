@@ -1,48 +1,68 @@
 import { renderRunSummary } from "../../src/logs/run.js";
-import type { AgentLogSummary } from "../../src/logs/run.js";
+import type { AgentReport, RunReport } from "../../src/run/types.js";
 
 describe("renderRunSummary", () => {
   it("formats output aligned with run command design", () => {
-    const agentSummaries: AgentLogSummary[] = [
+    const agents: AgentReport[] = [
       {
         agentId: "claude-code",
         status: "succeeded",
         changeSummary: "1 file changed, 10 insertions(+), 2 deletions(-)",
-        attemptedDiff: true,
-        capturedDiff: true,
-        attemptedTests: true,
-        testsStatus: "passed",
-        testsExitCode: 0,
-        artifacts: {
+        assets: {
           stdout: ".voratiq/runs/20251001-143500-fghij/claude-code/stdout.log",
           stderr: ".voratiq/runs/20251001-143500-fghij/claude-code/stderr.log",
+          workspace:
+            ".voratiq/runs/20251001-143500-fghij/claude-code/workspace",
           diff: ".voratiq/runs/20251001-143500-fghij/claude-code/diff.patch",
+          summary:
+            ".voratiq/runs/20251001-143500-fghij/claude-code/summary.txt",
           tests: ".voratiq/runs/20251001-143500-fghij/claude-code/tests.log",
         },
+        tests: {
+          status: "passed",
+          command: "npm test",
+          exitCode: 0,
+          logPath: ".voratiq/runs/20251001-143500-fghij/claude-code/tests.log",
+        },
+        error: undefined,
+        diffAttempted: true,
+        diffCaptured: true,
+        testsAttempted: true,
       },
       {
         agentId: "codex",
         status: "succeeded",
         changeSummary: "2 files changed, 15 insertions(+), 5 deletions(-)",
-        attemptedDiff: true,
-        capturedDiff: true,
-        attemptedTests: true,
-        testsStatus: "failed",
-        testsExitCode: 1,
-        artifacts: {
+        assets: {
           stdout: ".voratiq/runs/20251001-143500-fghij/codex/stdout.log",
           stderr: ".voratiq/runs/20251001-143500-fghij/codex/stderr.log",
+          workspace: ".voratiq/runs/20251001-143500-fghij/codex/workspace",
           diff: ".voratiq/runs/20251001-143500-fghij/codex/diff.patch",
+          summary: ".voratiq/runs/20251001-143500-fghij/codex/summary.txt",
           tests: ".voratiq/runs/20251001-143500-fghij/codex/tests.log",
         },
+        tests: {
+          status: "failed",
+          command: "npm test",
+          exitCode: 1,
+          logPath: ".voratiq/runs/20251001-143500-fghij/codex/tests.log",
+        },
+        error: undefined,
+        diffAttempted: true,
+        diffCaptured: true,
+        testsAttempted: true,
       },
     ];
 
-    const output = renderRunSummary({
-      specPath: "tests/fixtures/hello-world.md",
+    const report: RunReport = {
       runId: "20251001-143500-fghij",
-      agentSummaries,
-    });
+      spec: { path: "tests/fixtures/hello-world.md", sha256: "abc123" },
+      agents,
+      hadAgentFailure: false,
+      hadTestFailure: true,
+    };
+
+    const output = renderRunSummary(report);
 
     const expected = [
       "",
@@ -80,5 +100,37 @@ describe("renderRunSummary", () => {
     ].join("\n");
 
     expect(output).toBe(expected);
+  });
+
+  it("includes failure messaging for agents that error", () => {
+    const failingAgent: AgentReport = {
+      agentId: "codex",
+      status: "failed",
+      changeSummary: undefined,
+      assets: {
+        stdout: ".voratiq/runs/20251003-052332-ikneb/codex/stdout.log",
+        stderr: ".voratiq/runs/20251003-052332-ikneb/codex/stderr.log",
+        workspace: ".voratiq/runs/20251003-052332-ikneb/codex/workspace",
+      },
+      tests: undefined,
+      error: "Agent failed to modify the workspace",
+      diffAttempted: false,
+      diffCaptured: false,
+      testsAttempted: false,
+    };
+
+    const report: RunReport = {
+      runId: "20251003-052332-ikneb",
+      spec: { path: "tests/fixtures/run/hello-world.md" },
+      agents: [failingAgent],
+      hadAgentFailure: true,
+      hadTestFailure: false,
+    };
+
+    const output = renderRunSummary(report);
+
+    expect(output).toContain(
+      "  - Status: failed (Agent failed to modify the workspace)",
+    );
   });
 });

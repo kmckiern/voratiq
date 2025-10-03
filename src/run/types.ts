@@ -39,6 +39,7 @@ export const agentTestResultSchema = z.object({
   command: z.string().optional(),
   exitCode: z.number().nullable().optional(),
   logPath: z.string().optional(),
+  error: z.string().optional(),
 });
 
 export type AgentTestResult = z.infer<typeof agentTestResultSchema>;
@@ -74,3 +75,18 @@ export const runRecordSchema = z.object({
 });
 
 export type RunRecord = z.infer<typeof runRecordSchema>;
+
+export type AgentReport = Pick<
+  AgentInvocationRecord,
+  "agentId" | "status" | "changeSummary" | "assets" | "tests" | "error"
+> & {
+  diffAttempted: boolean;
+  diffCaptured: boolean;
+  testsAttempted: boolean;
+};
+
+export type RunReport = Pick<RunRecord, "runId" | "spec"> & {
+  agents: AgentReport[];
+  hadAgentFailure: boolean;
+  hadTestFailure: boolean;
+};

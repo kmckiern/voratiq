@@ -1,6 +1,4 @@
 import { renderRunSummary } from "../logs/index.js";
-import type { AgentLogSummary } from "../logs/run.js";
-import type { AgentOutcome } from "../run/command.js";
 import { executeRunCommand } from "../run/command.js";
 import { ensureNonEmptyString, requireFlagValue } from "../utils/args.js";
 import { ensureSpecPath, resolveCliContext } from "./preflight.js";
@@ -18,7 +16,7 @@ export async function runRunCommand(args: string[]): Promise<void> {
   const { absolutePath: specAbsolutePath, displayPath: specDisplayPath } =
     await ensureSpecPath(options.specPath, root);
 
-  const runResult = await executeRunCommand({
+  const runReport = await executeRunCommand({
     root,
     runsDirectory: workspacePaths.runsDir,
     runsFilePath: workspacePaths.runsFile,
@@ -28,15 +26,11 @@ export async function runRunCommand(args: string[]): Promise<void> {
     runId: options.runId,
   });
 
-  const summaryOutput = renderRunSummary({
-    specPath: runResult.specDisplayPath,
-    runId: runResult.runId,
-    agentSummaries: runResult.agentOutcomes.map(mapOutcomeToLogSummary),
-  });
+  const summaryOutput = renderRunSummary(runReport);
 
   process.stdout.write(`${summaryOutput}\n`);
 
-  if (runResult.hadAgentFailure || runResult.hadTestFailure) {
+  if (runReport.hadAgentFailure || runReport.hadTestFailure) {
     process.exitCode = 1;
   }
 }
@@ -82,18 +76,4 @@ function parseRunArgs(args: string[]): RunCliOptions {
   }
 
   return options;
-}
-
-function mapOutcomeToLogSummary(outcome: AgentOutcome): AgentLogSummary {
-  return {
-    agentId: outcome.agentId,
-    status: outcome.status,
-    changeSummary: outcome.changeSummary,
-    attemptedDiff: outcome.diffAttempted,
-    capturedDiff: outcome.diffCaptured,
-    attemptedTests: outcome.tests.attempted,
-    testsStatus: outcome.tests.status,
-    testsExitCode: outcome.tests.exitCode ?? undefined,
-    artifacts: outcome.artifacts,
-  };
 }
