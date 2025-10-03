@@ -1,6 +1,9 @@
 import process from "node:process";
 
-import { ensureNonEmptyString, ensureStringArray } from "../utils/validators.js";
+import {
+  ensureNonEmptyString,
+  ensureStringArray,
+} from "../utils/validators.js";
 import {
   AgentCatalog,
   AgentDefinition,
