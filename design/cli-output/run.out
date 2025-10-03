@@ -22,6 +22,16 @@ codex:
     - stdout: .voratiq/runs/20251001-143000-abcde/codex/stdout.log
     - stderr: .voratiq/runs/20251001-143000-abcde/codex/stderr.log
 
+gemini:
+  - Running agent...
+  - Capturing diff...
+  - Status: succeeded
+  - Changes: 1 file changed, 3 insertions(+)
+  - Artifacts:
+    - stdout: .voratiq/runs/20251001-143000-abcde/gemini/stdout.log
+    - stderr: .voratiq/runs/20251001-143000-abcde/gemini/stderr.log
+    - diff: .voratiq/runs/20251001-143000-abcde/gemini/diff.patch
+
 Run complete. To review results, run:
   voratiq review 20251001-143000-abcde
 ```

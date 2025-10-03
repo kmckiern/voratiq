@@ -1,7 +1,10 @@
 import { z } from "zod";
 
+import { agentIdSchema } from "../agents/types.js";
+
 export const voratiqRunPresetSchema = z.object({
   specPath: z.string(),
+  agents: z.array(agentIdSchema).optional(),
 });
 
 export type VoratiqRunPreset = z.infer<typeof voratiqRunPresetSchema>;

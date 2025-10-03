@@ -19,7 +19,7 @@ import { createWorkspace } from "../../src/workspace/index.js";
 
 const execFileAsync = promisify(execFile);
 
-const AGENT_IDS = ["claude-code", "codex"] as const;
+const AGENT_IDS = ["claude-code", "codex", "gemini"] as const;
 const projectRoot = process.cwd();
 
 describe("voratiq run (integration)", () => {
@@ -43,10 +43,18 @@ describe("voratiq run (integration)", () => {
     for (const agentId of AGENT_IDS) {
       const envPrefix = buildAgentEnvPrefix(agentId);
       setEnv(`${envPrefix}_BINARY`, agentScriptPath);
-      setEnv(
-        `${envPrefix}_ARGV`,
-        JSON.stringify(["--prompt", "--model", "{{MODEL}}"]),
-      );
+      const argv =
+        agentId === "gemini"
+          ? [
+              "generate",
+              "--model",
+              "{{MODEL}}",
+              "--prompt",
+              "--output-format",
+              "json",
+            ]
+          : ["--prompt", "--model", "{{MODEL}}"];
+      setEnv(`${envPrefix}_ARGV`, JSON.stringify(argv));
       setEnv(`${envPrefix}_MODEL`, `${agentId}-test-model`);
     }
   });

@@ -51,4 +51,4 @@ Recommendations for the current reference agents:
 
 If an agent violates any rule—missing summary, git command execution, metadata edits, permission errors—the run stops immediately with a surfaced error message. There are no retries, interactive fallbacks, or alternative execution paths. This is intentional: a failure should highlight misconfiguration or missing capabilities so it can be addressed directly. When a failure occurs, the CLI also tells you whether the workspace was modified so you can decide at a glance if there is code to inspect.
 
-By configuring agents according to this document, we ensure `voratiq run` can manage them predictably and produce consistent artifacts for downstream review.
+By configuring agents according to this document, we ensure `voratiq run` can manage them predictably and produce consistent artifacts for downstream review. Recent Gemini CLI validation confirmed that `gemini generate --model <id> --prompt "..." --output-format json` combined with `CI=1` satisfies the non-interactive requirements and mirrors the conventions outlined below.
