@@ -1088,15 +1088,27 @@ function annotateWorkspaceFailureMessage(
   if (!message) {
     return message;
   }
+  const { workspaceCleanAtStart, workspaceModifiedOnFailure } = options;
+  const summaryMissing = message.startsWith(
+    "Agent did not produce .summary.txt",
+  );
 
-  if (options.workspaceModifiedOnFailure === true) {
+  if (summaryMissing) {
+    if (workspaceModifiedOnFailure === true) {
+      return "Agent modified the workspace but did not produce .summary.txt (inspect artifacts)";
+    }
+    return "Agent failed to modify the workspace";
+  }
+
+  if (message.startsWith("Agent exited before modifying the workspace")) {
+    return "Agent failed to modify the workspace";
+  }
+
+  if (workspaceModifiedOnFailure === true) {
     return `${message}; workspace contains uncommitted edits (inspect artifacts)`;
   }
 
-  if (
-    options.workspaceModifiedOnFailure === false &&
-    options.workspaceCleanAtStart
-  ) {
+  if (workspaceModifiedOnFailure === false && workspaceCleanAtStart) {
     return `${message}; workspace remained unchanged`;
   }
 

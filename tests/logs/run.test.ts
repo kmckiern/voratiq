@@ -113,8 +113,7 @@ describe("renderRunSummary", () => {
         workspace: ".voratiq/runs/20251003-052332-ikneb/codex/workspace",
       },
       tests: undefined,
-      error:
-        "Agent exited before modifying the workspace; workspace remained unchanged",
+      error: "Agent failed to modify the workspace",
       diffAttempted: false,
       diffCaptured: false,
       testsAttempted: false,
@@ -131,7 +130,7 @@ describe("renderRunSummary", () => {
     const output = renderRunSummary(report);
 
     expect(output).toContain(
-      "  - Status: failed (Agent exited before modifying the workspace; workspace remained unchanged)",
+      "  - Status: failed (Agent failed to modify the workspace)",
     );
   });
 });
