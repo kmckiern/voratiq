@@ -13,7 +13,7 @@ Weekend MVP CLI that runs two built-in agents (`claude-code`, `codex`) against a
 2. **Run both agents on a spec.** Provide the spec Markdown path; the CLI executes each agent in turn, stores patches/logs, and appends a run record.
 
    ```bash
-   voratiq run --path specs/terminal-animation.md
+   voratiq run --spec specs/terminal-animation.md
    ```
 
 3. **Review and pick a winner.** Inspect the generated summaries and record the winning agent (or reject both).
@@ -39,9 +39,8 @@ Run commands as `voratiq <command> [options]`.
 
 **`run`** – execute both agents against a spec
 
-- `--path <spec>` (required) – spec Markdown path (relative or absolute).
+- `--spec <spec>` (required) – spec Markdown path (relative or absolute).
 - `--test-command "..."` – override default test hook for this run.
-- `--no-tests` – skip running tests.
 - `--id <run-id>` – debug override for generated run identifier.
 
 Behavior: prepares worktrees, runs `claude-code` then `codex`, captures diffs/logs/tests, writes run entry to `runs.jsonl`, and prints summary with artifact paths.

@@ -38,7 +38,7 @@ USER: voratiq init
 Executes agents against a spec file and records the results.
 
 ```
-USER: voratiq run --path <spec> [--test-command <cmd>]
+USER: voratiq run --spec <spec> [--test-command <cmd>]
   |
   +--> SYSTEM:
        - Validates the workspace.

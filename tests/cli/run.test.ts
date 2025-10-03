@@ -73,7 +73,6 @@ describe("voratiq run (integration)", () => {
       runsFilePath: join(repoRoot, ".voratiq", "runs.jsonl"),
       specAbsolutePath: specPath,
       specDisplayPath: relative(repoRoot, specPath),
-      skipTests: false,
     });
 
     expect(runResult.agentOutcomes).toHaveLength(AGENT_IDS.length);
@@ -131,7 +130,6 @@ describe("voratiq run (integration)", () => {
       runsFilePath: join(repoRoot, ".voratiq", "runs.jsonl"),
       specAbsolutePath: specPath,
       specDisplayPath: relative(repoRoot, specPath),
-      skipTests: true,
       runId: "custom-run-id",
     } as const;
 
@@ -140,6 +138,25 @@ describe("voratiq run (integration)", () => {
     await expect(executeRunCommand(sharedOptions)).rejects.toThrow(
       /Run directory already exists/u,
     );
+  });
+
+  it("rejects an empty test command", async () => {
+    await createWorkspace(repoRoot);
+
+    const specPath = join(repoRoot, "specs", "blank-test.md");
+    await mkdir(join(repoRoot, "specs"), { recursive: true });
+    await writeFile(specPath, "Reject empty test command\n", "utf8");
+
+    await expect(
+      executeRunCommand({
+        root: repoRoot,
+        runsDirectory: join(repoRoot, ".voratiq", "runs"),
+        runsFilePath: join(repoRoot, ".voratiq", "runs.jsonl"),
+        specAbsolutePath: specPath,
+        specDisplayPath: relative(repoRoot, specPath),
+        testCommand: "   ",
+      }),
+    ).rejects.toThrow(/Test command cannot be empty or whitespace/u);
   });
 });
 

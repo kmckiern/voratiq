@@ -31,6 +31,7 @@ import {
   resolvePath,
 } from "../utils/path.js";
 import { pathExists } from "../utils/fs.js";
+import { ensureNonEmptyString } from "../utils/args.js";
 
 const STDOUT_FILENAME = "stdout.log" as const;
 const STDERR_FILENAME = "stderr.log" as const;
@@ -48,7 +49,6 @@ export interface RunExecutionOptions {
   runsFilePath: string;
   specAbsolutePath: string;
   specDisplayPath: string;
-  skipTests: boolean;
   testCommand?: string;
   runId?: string;
 }
@@ -92,7 +92,6 @@ interface AgentExecutionContext {
   root: string;
   runRoot: string;
   specContent: string;
-  skipTests: boolean;
   testCommand?: string;
 }
 
@@ -111,10 +110,16 @@ export async function executeRunCommand(
     runsFilePath,
     specAbsolutePath,
     specDisplayPath,
-    skipTests,
     testCommand,
     runId: explicitRunId,
   } = options;
+
+  if (testCommand !== undefined) {
+    ensureNonEmptyString(
+      testCommand,
+      "Test command cannot be empty or whitespace",
+    );
+  }
 
   const specContent = await readFile(specAbsolutePath, "utf8");
   const specHash = createHash("sha256").update(specContent).digest("hex");
@@ -145,7 +150,6 @@ export async function executeRunCommand(
       root,
       runRoot,
       specContent,
-      skipTests,
       testCommand,
     });
 
@@ -194,7 +198,6 @@ async function executeAgent(
     root,
     runRoot,
     specContent,
-    skipTests,
     testCommand,
   } = context;
 
@@ -298,8 +301,7 @@ async function executeAgent(
     }
   }
 
-  const attemptedTests =
-    Boolean(testCommand) && !skipTests && status === "succeeded";
+  const attemptedTests = Boolean(testCommand) && status === "succeeded";
 
   const testsResult = await maybeRunTests({
     testCommand,
