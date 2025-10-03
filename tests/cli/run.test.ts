@@ -209,9 +209,7 @@ describe("voratiq run (integration)", () => {
       (agent) => agent.agentId === "codex",
     );
     expect(failingRecord?.status).toBe("failed");
-    expect(failingRecord?.error).toBe(
-      "Agent failed to modify the workspace",
-    );
+    expect(failingRecord?.error).toBe("Agent failed to modify the workspace");
   });
 
   it("surfaces summary violations with clear messaging", async () => {
@@ -273,9 +271,7 @@ describe("voratiq run (integration)", () => {
     );
     expect(signalAgent).toBeDefined();
     expect(signalAgent?.status).toBe("failed");
-    expect(signalAgent?.error).toBe(
-      "Agent failed to modify the workspace",
-    );
+    expect(signalAgent?.error).toBe("Agent failed to modify the workspace");
   });
 
   it("surfaces git status failures from the failure classifier", async () => {
