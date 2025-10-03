@@ -27,6 +27,7 @@ This document describes how the `voratiq run` command orchestrates agents, manag
    - Spawn the agent binary with static argv plus a generated prompt that instructs it to edit files only and write a summary to `.summary.txt` inside the workspace.
    - Provide the environment variables described in the headless agent guide, including `VORATIQ_AGENT_MODEL`, and replace any `{{MODEL}}` placeholders in argv before invoking the binary.
    - Wait for the process to exit; no retries or interactive prompts are issued.
+   - Continue to later agents even if an earlier invocation fails. Failures are recorded and surfaced, but they do not stop the remaining agents from running.
 
 4. **Harvesting**
    - Read the summary file, copy its contents to `<agent>/summary.txt`, and remove the workspace copy.
@@ -37,6 +38,7 @@ This document describes how the `voratiq run` command orchestrates agents, manag
 5. **Record keeping**
    - Append a JSON line to `.voratiq/runs.jsonl` containing run metadata (spec path, base revision, per-agent summaries, commit SHAs, test status, artifact paths).
    - Write final CLI output describing the run and the follow-up `voratiq review` command.
+   - Persist the orchestrator error (if any) for each agent so that the CLI and downstream tools can display the exact failure message.
 
 ## Artifacts per agent
 
@@ -63,6 +65,6 @@ The following files live under `.voratiq/runs/<run-id>/<agent>/` after the run c
 - **Git permissions.** Some agent CLIs lacked permission to write into the primary `.git/` directory. Moving commits into the orchestrator eliminated those failures.
 - **Prompt clarity.** Agents attempted git operations when the prompt was ambiguous. The current contract forbids git, making violations explicit.
 - **Summary required.** Having the agent describe its output ensures reviewers receive context even before running `voratiq review`.
-- **Fast fail philosophy.** Earlier attempts to “keep going” after partial failures caused misleading artifacts. We now stop at the first inconsistency so misconfigurations are fixed at the source.
+- **Failure visibility.** Runs continue after individual agent failures, but every failure is marked, recorded, and surfaced in the CLI so reviewers immediately see what went wrong.
 
 This overview should be sufficient to rebuild `voratiq run` from first principles while maintaining the guarantees we rely on today.

@@ -1,73 +1,46 @@
-import type { AgentId } from "../agents/types.js";
+import type { AgentReport, RunReport } from "../run/types.js";
 
-export interface AgentArtifactSummary {
-  stdout: string;
-  stderr: string;
-  diff?: string;
-  tests?: string;
-}
-
-export interface AgentLogSummary {
-  agentId: AgentId;
-  status: "succeeded" | "failed";
-  changeSummary?: string;
-  attemptedDiff: boolean;
-  capturedDiff: boolean;
-  attemptedTests: boolean;
-  testsStatus?: "passed" | "failed" | "skipped";
-  testsExitCode?: number | null;
-  artifacts: AgentArtifactSummary;
-}
-
-export interface RenderRunSummaryOptions {
-  specPath: string;
-  runId: string;
-  agentSummaries: AgentLogSummary[];
-}
-
-export function renderRunSummary(options: RenderRunSummaryOptions): string {
-  const { specPath, runId, agentSummaries } = options;
-
+export function renderRunSummary(report: RunReport): string {
   const lines: string[] = [];
 
   lines.push(
     "",
-    `Running agents against spec: ${specPath}`,
-    `Run ID: ${runId}`,
+    `Running agents against spec: ${report.spec.path}`,
+    `Run ID: ${report.runId}`,
     "",
   );
 
-  agentSummaries.forEach((summary, index) => {
+  report.agents.forEach((agent, index) => {
     if (index > 0) {
       lines.push("");
     }
 
-    lines.push(`${summary.agentId}:`);
+    lines.push(`${agent.agentId}:`);
     lines.push("  - Running agent...");
 
-    if (summary.attemptedDiff) {
+    if (agent.diffAttempted) {
       lines.push("  - Capturing diff...");
     }
 
-    if (summary.attemptedTests) {
+    if (agent.testsAttempted) {
       lines.push("  - Running tests...");
     }
 
-    lines.push(`  - Status: ${summary.status}`);
+    const statusLine = buildStatusLine(agent);
+    lines.push(statusLine);
 
-    if (summary.attemptedTests && summary.testsStatus) {
-      const exitCodeSuffix =
-        summary.testsStatus === "failed" && summary.testsExitCode !== undefined
-          ? ` (exit code ${summary.testsExitCode ?? "unknown"})`
-          : "";
-      lines.push(`  - Tests: ${summary.testsStatus}${exitCodeSuffix}`);
+    if (agent.testsAttempted && agent.tests) {
+      const testsLine = buildTestsLine(agent);
+      if (testsLine) {
+        lines.push(testsLine);
+      }
     }
 
-    if (summary.changeSummary) {
-      lines.push(`  - Changes: ${summary.changeSummary}`);
+    if (agent.changeSummary) {
+      lines.push(`  - Changes: ${agent.changeSummary}`);
     }
 
-    const artifactEntries = buildArtifactLines(summary.artifacts);
+    const artifactEntries = buildArtifactLines(agent);
     if (artifactEntries.length > 0) {
       lines.push("  - Artifacts:");
       artifactEntries.forEach((entry) => {
@@ -79,24 +52,56 @@ export function renderRunSummary(options: RenderRunSummaryOptions): string {
   lines.push(
     "",
     "Run complete. To review results, run:",
-    `  voratiq review ${runId}`,
+    `  voratiq review ${report.runId}`,
   );
 
   return lines.join("\n");
 }
 
-function buildArtifactLines(artifacts: AgentArtifactSummary): string[] {
-  const entries: string[] = [];
+function buildStatusLine(agent: AgentReport): string {
+  if (agent.status === "failed" && agent.error) {
+    return `  - Status: failed (${agent.error})`;
+  }
+  return `  - Status: ${agent.status}`;
+}
 
-  entries.push(`stdout: ${artifacts.stdout}`);
-  entries.push(`stderr: ${artifacts.stderr}`);
-
-  if (artifacts.diff) {
-    entries.push(`diff: ${artifacts.diff}`);
+function buildTestsLine(agent: AgentReport): string | undefined {
+  const tests = agent.tests;
+  if (!tests) {
+    return undefined;
   }
 
-  if (artifacts.tests) {
-    entries.push(`tests: ${artifacts.tests}`);
+  if (tests.error) {
+    return `  - Tests: ${tests.error}`;
+  }
+
+  if (tests.status === "passed") {
+    return "  - Tests: passed";
+  }
+
+  if (tests.status === "failed") {
+    const exitCodeText =
+      tests.exitCode !== undefined && tests.exitCode !== null
+        ? ` (exit code ${tests.exitCode})`
+        : "";
+    return `  - Tests: failed${exitCodeText}`;
+  }
+
+  return `  - Tests: ${tests.status}`;
+}
+
+function buildArtifactLines(agent: AgentReport): string[] {
+  const entries: string[] = [];
+
+  entries.push(`stdout: ${agent.assets.stdout}`);
+  entries.push(`stderr: ${agent.assets.stderr}`);
+
+  if (agent.assets.diff) {
+    entries.push(`diff: ${agent.assets.diff}`);
+  }
+
+  if (agent.assets.tests) {
+    entries.push(`tests: ${agent.assets.tests}`);
   }
 
   return entries;

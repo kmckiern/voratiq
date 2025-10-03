@@ -5,13 +5,14 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 
 import { loadAgentCatalog } from "../agents/config.js";
 import type { AgentDefinition } from "../agents/types.js";
-import type { AgentId } from "../agents/types.js";
-import type {
-  AgentInvocationRecord,
-  AgentTestResult,
-  RunRecord,
+import {
+  agentTestResultSchema,
+  type AgentInvocationRecord,
+  type AgentReport,
+  type AgentTestResult,
+  type RunRecord,
+  type RunReport,
 } from "./types.js";
-import { agentTestResultSchema } from "./types.js";
 import { appendRunRecord } from "./records.js";
 import { buildAgentPrompt } from "./prompts.js";
 import { generateRunId } from "./id.js";
@@ -32,6 +33,14 @@ import {
 } from "../utils/path.js";
 import { pathExists } from "../utils/fs.js";
 import { ensureNonEmptyString } from "../utils/args.js";
+import {
+  AgentProcessError,
+  GitOperationError,
+  RunCommandError,
+  SummaryMissingError,
+  TestCommandError,
+  WorkspaceSetupError,
+} from "./errors.js";
 
 const STDOUT_FILENAME = "stdout.log" as const;
 const STDERR_FILENAME = "stderr.log" as const;
@@ -43,7 +52,7 @@ const WORKSPACE_SUMMARY_FILENAME = ".summary.txt" as const;
 const PROMPT_FLAG_PREFIXES = ["--prompt=", "-p="] as const;
 const PROMPT_FLAG_TOKENS = new Set(["--prompt", "-p"]);
 
-export interface RunExecutionOptions {
+export interface RunCommandInput {
   root: string;
   runsDirectory: string;
   runsFilePath: string;
@@ -51,38 +60,6 @@ export interface RunExecutionOptions {
   specDisplayPath: string;
   testCommand?: string;
   runId?: string;
-}
-
-export interface RunExecutionResult {
-  runId: string;
-  specDisplayPath: string;
-  agentOutcomes: AgentOutcome[];
-  hadAgentFailure: boolean;
-  hadTestFailure: boolean;
-}
-
-export interface AgentOutcome {
-  agentId: AgentId;
-  status: "succeeded" | "failed";
-  changeSummary?: string;
-  diffAttempted: boolean;
-  diffCaptured: boolean;
-  tests: AgentOutcomeTests;
-  artifacts: AgentOutcomeArtifacts;
-}
-
-export interface AgentOutcomeArtifacts {
-  stdout: string;
-  stderr: string;
-  diff?: string;
-  tests?: string;
-}
-
-export interface AgentOutcomeTests {
-  attempted: boolean;
-  status?: "passed" | "failed";
-  exitCode?: number | null;
-  logPath?: string;
 }
 
 interface AgentExecutionContext {
@@ -95,15 +72,20 @@ interface AgentExecutionContext {
   testCommand?: string;
 }
 
+interface AgentExecutionState {
+  diffAttempted: boolean;
+  diffCaptured: boolean;
+  testsAttempted: boolean;
+}
+
 interface AgentExecutionResult {
   record: AgentInvocationRecord;
-  outcome: AgentOutcome;
-  testsFailed: boolean;
+  report: AgentReport;
 }
 
 export async function executeRunCommand(
-  options: RunExecutionOptions,
-): Promise<RunExecutionResult> {
+  input: RunCommandInput,
+): Promise<RunReport> {
   const {
     root,
     runsDirectory,
@@ -112,7 +94,7 @@ export async function executeRunCommand(
     specDisplayPath,
     testCommand,
     runId: explicitRunId,
-  } = options;
+  } = input;
 
   if (testCommand !== undefined) {
     ensureNonEmptyString(
@@ -138,9 +120,7 @@ export async function executeRunCommand(
   const agents = loadAgentCatalog();
 
   const agentRecords: AgentInvocationRecord[] = [];
-  const agentOutcomes: AgentOutcome[] = [];
-  let hadAgentFailure = false;
-  let hadTestFailure = false;
+  const agentReports: AgentReport[] = [];
 
   for (const agent of agents) {
     const execution = await executeAgent({
@@ -154,10 +134,17 @@ export async function executeRunCommand(
     });
 
     agentRecords.push(execution.record);
-    agentOutcomes.push(execution.outcome);
-    hadAgentFailure ||= execution.record.status !== "succeeded";
-    hadTestFailure ||= execution.testsFailed;
+    agentReports.push(execution.report);
   }
+
+  const hadAgentFailure = agentReports.some(
+    (report) => report.status === "failed",
+  );
+  const hadTestFailure = agentReports.some(
+    (report) =>
+      report.testsAttempted &&
+      (report.tests?.status === "failed" || Boolean(report.tests?.error)),
+  );
 
   const repoDisplayPath = normalizePathForDisplay(relativeToRoot(root, root));
   const runDirectoryDisplayPath = normalizePathForDisplay(
@@ -179,13 +166,14 @@ export async function executeRunCommand(
 
   await appendRunRecord(runsFilePath, runRecord);
 
-  return {
-    runId,
-    specDisplayPath: normalizePathForDisplay(specDisplayPath),
-    agentOutcomes,
+  const runReport = toRunReport(
+    runRecord,
+    agentReports,
     hadAgentFailure,
     hadTestFailure,
-  };
+  );
+
+  return runReport;
 }
 
 async function executeAgent(
@@ -209,140 +197,315 @@ async function executeAgent(
   const workspacePath = resolvePath(agentRoot, WORKSPACE_DIRNAME);
   const testsLogPath = resolvePath(agentRoot, TESTS_FILENAME);
 
-  await mkdir(agentRoot, { recursive: true });
-  await writeFile(stdoutPath, "", { encoding: "utf8" });
-  await writeFile(stderrPath, "", { encoding: "utf8" });
-  await writeFile(diffPath, "", { encoding: "utf8" });
-  await writeFile(testsLogPath, "", { encoding: "utf8" });
-
-  const branchName = `voratiq/run/${runId}/${agent.id}`;
-  await createWorktree({
-    root,
-    worktreePath: workspacePath,
-    branch: branchName,
-    baseRevision,
-  });
-
-  const prompt = buildAgentPrompt({ specContent });
-  const agentArgv = buildAgentArgv(agent.argv, prompt);
-
-  const startedAt = new Date().toISOString();
-  const processResult = await runAgentProcess({
-    agent,
-    argv: agentArgv,
-    cwd: workspacePath,
-    prompt,
-    stdoutPath,
-    stderrPath,
-  });
-  const completedAt = new Date().toISOString();
-
   const stdoutRelative = normalizePathForDisplay(
     relativeToRoot(root, stdoutPath),
   );
   const stderrRelative = normalizePathForDisplay(
     relativeToRoot(root, stderrPath),
   );
+  const diffRelativePath = normalizePathForDisplay(
+    relativeToRoot(root, diffPath),
+  );
   const workspaceRelative = normalizePathForDisplay(
     relativeToRoot(root, workspacePath),
   );
+  const testsLogRelativePath = normalizePathForDisplay(
+    relativeToRoot(root, testsLogPath),
+  );
 
-  const status: "succeeded" | "failed" =
-    processResult.exitCode === 0 ? "succeeded" : "failed";
+  const state: AgentExecutionState = {
+    diffAttempted: false,
+    diffCaptured: false,
+    testsAttempted: false,
+  };
 
+  const prompt = buildAgentPrompt({ specContent });
+  const agentArgv = buildAgentArgv(agent.argv, prompt);
+  const startedAt = new Date().toISOString();
+  let completedAt = startedAt;
+  let status: "succeeded" | "failed" = "succeeded";
+  let changeSummary: string | undefined;
+  let commitSha: string | undefined;
   let summaryText: string | undefined;
   let summaryRelative: string | undefined;
   let diffRelative: string | undefined;
-  let changeSummary: string | undefined;
-  let commitSha: string | undefined;
+  let testsResult: AgentTestResult | undefined;
+  let errorMessage: string | undefined;
 
-  if (status === "succeeded") {
-    const summaryHarvest = await harvestSummary({
-      workspacePath,
+  try {
+    await scaffoldAgentWorkspace({
+      agentRoot,
+      stdoutPath,
+      stderrPath,
+      diffPath,
       summaryPath,
-      root,
+      testsLogPath,
+      workspacePath,
     });
-    summaryText = summaryHarvest.summary;
-    summaryRelative = summaryHarvest.relativePath;
+  } catch (error) {
+    const failure =
+      error instanceof WorkspaceSetupError
+        ? error
+        : ensureWorkspaceError(error);
+    status = "failed";
+    errorMessage = failure.messageForDisplay();
+    completedAt = new Date().toISOString();
+    const record = buildAgentRecord({
+      agent,
+      agentArgv,
+      changeSummary,
+      commitSha,
+      completedAt,
+      diffRelative,
+      errorMessage,
+      prompt,
+      startedAt,
+      status,
+      stdoutRelative,
+      stderrRelative,
+      summaryRelative,
+      testsResult,
+      workspaceRelative,
+      summaryText,
+    });
 
-    await gitAddAll(workspacePath);
-    const hasChanges = await gitHasStagedChanges(workspacePath);
+    return finalizeAgentResult(record, state);
+  }
 
-    if (hasChanges) {
-      const summaryLine = summaryText.split("\n")[0]?.trim() ?? "";
-      if (!summaryLine) {
-        throw new Error("Agent summary is missing a subject line");
-      }
+  try {
+    await createWorktree({
+      root,
+      worktreePath: workspacePath,
+      branch: `voratiq/run/${runId}/${agent.id}`,
+      baseRevision,
+    });
+  } catch (error) {
+    const failure = ensureWorkspaceError(error);
+    status = "failed";
+    errorMessage = failure.messageForDisplay();
+    completedAt = new Date().toISOString();
+    const record = buildAgentRecord({
+      agent,
+      agentArgv,
+      changeSummary,
+      commitSha,
+      completedAt,
+      diffRelative,
+      errorMessage,
+      prompt,
+      startedAt,
+      status,
+      stdoutRelative,
+      stderrRelative,
+      summaryRelative,
+      testsResult,
+      workspaceRelative,
+      summaryText,
+    });
 
-      await gitCommitAll({
-        cwd: workspacePath,
-        message: summaryLine,
-        authorName: "Voratiq Orchestrator",
-        authorEmail: "cli@voratiq",
+    return finalizeAgentResult(record, state);
+  }
+
+  try {
+    const processResult = await runAgentProcess({
+      agent,
+      argv: agentArgv,
+      cwd: workspacePath,
+      prompt,
+      stdoutPath,
+      stderrPath,
+    });
+
+    if (processResult.exitCode !== 0 || processResult.errorMessage) {
+      const workspaceModified = await hasWorkspaceModifications(workspacePath);
+      const failure = new AgentProcessError({
+        phase: workspaceModified ? "afterOutput" : "beforeOutput",
+        exitCode: processResult.exitCode,
+        detail: processResult.errorMessage,
       });
-
-      commitSha = await runGitCommand(["rev-parse", "HEAD"], {
-        cwd: workspacePath,
+      status = "failed";
+      errorMessage = failure.messageForDisplay();
+    }
+  } catch (rawError) {
+    if (rawError instanceof RunCommandError) {
+      status = "failed";
+      errorMessage = rawError.messageForDisplay();
+    } else {
+      const failure = new AgentProcessError({
+        phase: "beforeOutput",
+        detail: rawError instanceof Error ? rawError.message : String(rawError),
       });
-
-      const diffContent = await gitDiff({
-        cwd: workspacePath,
-        baseRevision,
-        targetRevision: "HEAD",
-      });
-      await writeFile(diffPath, diffContent, { encoding: "utf8" });
-      diffRelative = normalizePathForDisplay(relativeToRoot(root, diffPath));
-
-      changeSummary = await gitDiffShortStat({
-        cwd: workspacePath,
-        baseRevision,
-        targetRevision: "HEAD",
-      });
+      status = "failed";
+      errorMessage = failure.messageForDisplay();
     }
   }
 
-  const attemptedTests = Boolean(testCommand) && status === "succeeded";
+  try {
+    if (status === "succeeded") {
+      const summaryHarvest = await harvestSummary({
+        workspacePath,
+        summaryPath,
+        root,
+      });
+      summaryText = summaryHarvest.summary;
+      summaryRelative = summaryHarvest.relativePath;
 
-  const testsResult = await maybeRunTests({
-    testCommand,
-    cwd: workspacePath,
-    testsLogPath,
-    root,
-    attemptedTests,
+      state.diffAttempted = true;
+
+      await runGitStep("Git add failed", () => gitAddAll(workspacePath));
+      const hasChanges = await gitHasStagedChanges(workspacePath);
+
+      if (hasChanges) {
+        const summaryLine = summaryText.split("\n")[0]?.trim() ?? "";
+        if (!summaryLine) {
+          throw new SummaryMissingError(
+            "Agent summary is missing a subject line",
+          );
+        }
+
+        await runGitStep("Git commit failed", () =>
+          gitCommitAll({
+            cwd: workspacePath,
+            message: summaryLine,
+            authorName: "Voratiq Orchestrator",
+            authorEmail: "cli@voratiq",
+          }),
+        );
+
+        commitSha = await runGitStep("Git rev-parse failed", () =>
+          runGitCommand(["rev-parse", "HEAD"], { cwd: workspacePath }),
+        );
+
+        const diffContent = await runGitStep("Git diff failed", () =>
+          gitDiff({
+            cwd: workspacePath,
+            baseRevision,
+            targetRevision: "HEAD",
+          }),
+        );
+        await writeFile(diffPath, diffContent, { encoding: "utf8" });
+        diffRelative = diffRelativePath;
+        state.diffCaptured = true;
+
+        changeSummary = await runGitStep("Git diff --shortstat failed", () =>
+          gitDiffShortStat({
+            cwd: workspacePath,
+            baseRevision,
+            targetRevision: "HEAD",
+          }),
+        );
+      }
+    }
+  } catch (rawError) {
+    const failure = classifyPostProcessError(rawError);
+    status = "failed";
+    errorMessage = failure.messageForDisplay();
+  }
+
+  try {
+    if (status === "succeeded" && testCommand) {
+      state.testsAttempted = true;
+      try {
+        const result = await runTests({
+          testCommand,
+          cwd: workspacePath,
+          testsLogPath,
+          root,
+        });
+        testsResult = result;
+      } catch (rawError) {
+        const failure =
+          rawError instanceof TestCommandError
+            ? rawError
+            : new TestCommandError({
+                detail:
+                  rawError instanceof Error
+                    ? rawError.message
+                    : String(rawError),
+              });
+        errorMessage = failure.messageForDisplay();
+        testsResult = agentTestResultSchema.parse({
+          status: "skipped",
+          command: testCommand,
+          logPath: testsLogRelativePath,
+          error: failure.messageForDisplay(),
+        });
+      }
+    }
+  } finally {
+    completedAt = new Date().toISOString();
+  }
+
+  const record = buildAgentRecord({
+    agent,
+    agentArgv,
+    changeSummary,
+    commitSha,
+    completedAt,
+    diffRelative,
+    errorMessage,
+    prompt,
+    startedAt,
+    status,
+    stdoutRelative,
+    stderrRelative,
+    summaryRelative,
+    testsResult,
+    workspaceRelative,
+    summaryText,
   });
 
-  let testsFailed = false;
-  let testsLogRelative: string | undefined;
-  let normalizedTestStatus: "passed" | "failed" | undefined;
-  if (testsResult) {
-    if (testsResult.status === "passed" || testsResult.status === "failed") {
-      normalizedTestStatus = testsResult.status;
-    }
-    testsFailed = normalizedTestStatus === "failed";
-    testsLogRelative = testsResult.logPath;
-  }
+  const result = finalizeAgentResult(record, {
+    diffAttempted: state.diffAttempted,
+    diffCaptured: state.diffCaptured,
+    testsAttempted: state.testsAttempted,
+  });
 
-  const outcome: AgentOutcome = {
-    agentId: agent.id,
-    status,
+  return result;
+}
+
+interface BuildAgentRecordOptions {
+  agent: AgentDefinition;
+  agentArgv: string[];
+  changeSummary: string | undefined;
+  commitSha: string | undefined;
+  completedAt: string;
+  diffRelative: string | undefined;
+  errorMessage: string | undefined;
+  prompt: string;
+  startedAt: string;
+  status: "succeeded" | "failed";
+  stdoutRelative: string;
+  stderrRelative: string;
+  summaryRelative: string | undefined;
+  testsResult: AgentTestResult | undefined;
+  workspaceRelative: string;
+  summaryText: string | undefined;
+}
+
+function buildAgentRecord(
+  options: BuildAgentRecordOptions,
+): AgentInvocationRecord {
+  const {
+    agent,
+    agentArgv,
     changeSummary,
-    diffAttempted: true,
-    diffCaptured: Boolean(diffRelative),
-    tests: {
-      attempted: attemptedTests,
-      status: normalizedTestStatus,
-      exitCode: testsResult?.exitCode,
-      logPath: testsLogRelative,
-    },
-    artifacts: {
-      stdout: stdoutRelative,
-      stderr: stderrRelative,
-      diff: diffRelative,
-      tests: testsLogRelative,
-    },
-  };
+    commitSha,
+    completedAt,
+    diffRelative,
+    errorMessage,
+    prompt,
+    startedAt,
+    status,
+    stdoutRelative,
+    stderrRelative,
+    summaryRelative,
+    testsResult,
+    workspaceRelative,
+    summaryText,
+  } = options;
 
-  const record: AgentInvocationRecord = {
+  return {
     agentId: agent.id,
     model: agent.model,
     binaryPath: agent.binaryPath,
@@ -361,34 +524,170 @@ async function executeAgent(
       workspace: workspaceRelative,
       diff: diffRelative,
       summary: summaryRelative,
-      tests: testsLogRelative,
+      tests: testsResult?.logPath,
     },
     tests: testsResult,
-    error:
-      status === "failed"
-        ? (processResult.errorMessage ?? "Agent exited with failure")
-        : undefined,
-  };
-
-  return {
-    record,
-    outcome,
-    testsFailed,
+    error: errorMessage,
   };
 }
 
-interface AgentProcessOptions {
-  agent: AgentDefinition;
-  argv: string[];
-  cwd: string;
-  prompt: string;
+function finalizeAgentResult(
+  record: AgentInvocationRecord,
+  derivations: AgentExecutionState,
+): AgentExecutionResult {
+  const report = toAgentReport(record, {
+    diffAttempted: derivations.diffAttempted,
+    diffCaptured: derivations.diffCaptured,
+    testsAttempted: derivations.testsAttempted,
+  });
+  return { record, report };
+}
+
+async function scaffoldAgentWorkspace(options: {
+  agentRoot: string;
   stdoutPath: string;
   stderrPath: string;
+  diffPath: string;
+  summaryPath: string;
+  testsLogPath: string;
+  workspacePath: string;
+}): Promise<void> {
+  const {
+    agentRoot,
+    stdoutPath,
+    stderrPath,
+    diffPath,
+    summaryPath,
+    testsLogPath,
+    workspacePath,
+  } = options;
+
+  try {
+    await mkdir(agentRoot, { recursive: true });
+    await writeFile(stdoutPath, "", { encoding: "utf8" });
+    await writeFile(stderrPath, "", { encoding: "utf8" });
+    await writeFile(diffPath, "", { encoding: "utf8" });
+    await writeFile(testsLogPath, "", { encoding: "utf8" });
+    await mkdir(workspacePath, { recursive: true });
+    await writeFile(summaryPath, "", { encoding: "utf8" });
+  } catch (error) {
+    throw ensureWorkspaceError(error);
+  }
 }
 
-interface AgentProcessResult {
-  exitCode: number;
-  errorMessage?: string;
+async function runGitStep<T>(
+  operationMessage: string,
+  step: () => Promise<T>,
+): Promise<T> {
+  try {
+    return await step();
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    throw new GitOperationError({ operation: operationMessage, detail });
+  }
+}
+
+function classifyPostProcessError(error: unknown): RunCommandError {
+  if (error instanceof RunCommandError) {
+    return error;
+  }
+
+  if (error instanceof Error && error.message?.includes(".summary.txt")) {
+    return new SummaryMissingError();
+  }
+
+  if (error instanceof Error) {
+    return new GitOperationError({
+      operation: "Run finalization failed",
+      detail: error.message,
+    });
+  }
+
+  return new GitOperationError({
+    operation: "Run finalization failed",
+    detail: String(error),
+  });
+}
+
+async function hasWorkspaceModifications(
+  workspacePath: string,
+): Promise<boolean> {
+  try {
+    const status = await runGitCommand(["status", "--porcelain"], {
+      cwd: workspacePath,
+      trim: true,
+    });
+    return status.length > 0;
+  } catch (error) {
+    throw new GitOperationError({
+      operation: "Git status failed",
+      detail: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
+interface RunTestsOptions {
+  testCommand: string;
+  cwd: string;
+  testsLogPath: string;
+  root: string;
+}
+
+async function runTests(options: RunTestsOptions): Promise<AgentTestResult> {
+  const { testCommand, cwd, testsLogPath, root } = options;
+  const logStream = createWriteStream(testsLogPath, { flags: "w" });
+
+  try {
+    const result = await new Promise<AgentTestResult>((resolve, reject) => {
+      const child = spawn(testCommand, {
+        cwd,
+        shell: true,
+        stdio: ["ignore", "pipe", "pipe"],
+        env: process.env,
+      });
+
+      const { stdout, stderr } = child;
+
+      if (!stdout || !stderr) {
+        reject(
+          new TestCommandError({ detail: "Failed to capture test output" }),
+        );
+        return;
+      }
+
+      stdout.pipe(logStream, { end: false });
+      stderr.pipe(logStream, { end: false });
+
+      child.on("error", (error: Error) => {
+        reject(new TestCommandError({ detail: error.message }));
+      });
+
+      child.on("close", (code: number | null) => {
+        logStream.end();
+        const status = code === 0 ? "passed" : "failed";
+        resolve(
+          agentTestResultSchema.parse({
+            status,
+            command: testCommand,
+            exitCode: code ?? 0,
+            logPath: normalizePathForDisplay(
+              relativeToRoot(root, testsLogPath),
+            ),
+          }),
+        );
+      });
+    });
+
+    return result;
+  } catch (error) {
+    logStream.end();
+    if (error instanceof TestCommandError) {
+      throw error;
+    }
+    throw new TestCommandError({
+      detail: error instanceof Error ? error.message : String(error),
+    });
+  }
 }
 
 async function runAgentProcess(
@@ -399,16 +698,14 @@ async function runAgentProcess(
   const stdoutStream = createWriteStream(stdoutPath, { flags: "w" });
   const stderrStream = createWriteStream(stderrPath, { flags: "w" });
 
-  const childEnv: Record<string, string | undefined> = {
-    ...process.env,
-    VORATIQ_AGENT_ID: agent.id,
-    VORATIQ_AGENT_MODEL: agent.model,
-  };
-
   return new Promise<AgentProcessResult>((resolve, reject) => {
     const child = spawn(agent.binaryPath, argv, {
       cwd,
-      env: childEnv,
+      env: {
+        ...process.env,
+        VORATIQ_AGENT_ID: agent.id,
+        VORATIQ_AGENT_MODEL: agent.model,
+      },
       stdio: ["pipe", "pipe", "pipe"],
     });
 
@@ -432,7 +729,6 @@ async function runAgentProcess(
     let errorMessage: string | undefined;
 
     child.on("error", (error: Error) => {
-      errorMessage = error.message;
       stdoutStream.end();
       stderrStream.end();
       reject(error);
@@ -451,6 +747,20 @@ async function runAgentProcess(
       resolve({ exitCode: code ?? 0, errorMessage });
     });
   });
+}
+
+interface AgentProcessOptions {
+  agent: AgentDefinition;
+  argv: string[];
+  cwd: string;
+  prompt: string;
+  stdoutPath: string;
+  stderrPath: string;
+}
+
+interface AgentProcessResult {
+  exitCode: number;
+  errorMessage?: string;
 }
 
 interface HarvestSummaryOptions {
@@ -472,13 +782,19 @@ async function harvestSummary(
     workspacePath,
     WORKSPACE_SUMMARY_FILENAME,
   );
-  const raw = await readFile(workspaceSummaryPath, "utf8").catch(() => {
-    throw new Error("Agent did not produce .summary.txt");
-  });
+
+  let raw: string;
+  try {
+    raw = await readFile(workspaceSummaryPath, "utf8");
+  } catch (error) {
+    throw new SummaryMissingError(
+      error instanceof Error ? error.message : String(error),
+    );
+  }
 
   const trimmed = raw.trim();
   if (!trimmed) {
-    throw new Error("Agent summary is empty");
+    throw new SummaryMissingError("Agent summary is empty");
   }
 
   await writeFile(summaryPath, `${trimmed}\n`, { encoding: "utf8" });
@@ -490,65 +806,64 @@ async function harvestSummary(
   };
 }
 
-interface MaybeRunTestsOptions {
-  testCommand?: string;
-  cwd: string;
-  testsLogPath: string;
-  root: string;
-  attemptedTests: boolean;
+function ensureWorkspaceError(error: unknown): WorkspaceSetupError {
+  const detail = error instanceof Error ? error.message : String(error);
+  return new WorkspaceSetupError({ detail });
 }
 
-async function maybeRunTests(
-  options: MaybeRunTestsOptions,
-): Promise<AgentTestResult | undefined> {
-  const { testCommand, cwd, testsLogPath, root, attemptedTests } = options;
+function toAgentReport(
+  record: AgentInvocationRecord,
+  derivations: {
+    diffAttempted: boolean;
+    diffCaptured: boolean;
+    testsAttempted: boolean;
+  },
+): AgentReport {
+  return {
+    agentId: record.agentId,
+    status: record.status,
+    changeSummary: record.changeSummary,
+    assets: record.assets,
+    tests: record.tests,
+    error: record.error,
+    diffAttempted: derivations.diffAttempted,
+    diffCaptured: derivations.diffCaptured,
+    testsAttempted: derivations.testsAttempted,
+  };
+}
 
-  if (!attemptedTests || !testCommand) {
-    return undefined;
+function toRunReport(
+  record: RunRecord,
+  agents: AgentReport[],
+  hadAgentFailure: boolean,
+  hadTestFailure: boolean,
+): RunReport {
+  const derivedAgentFailure = agents.some((agent) => agent.status === "failed");
+  const derivedTestFailure = agents.some(
+    (agent) =>
+      agent.testsAttempted &&
+      (agent.tests?.status === "failed" || Boolean(agent.tests?.error)),
+  );
+
+  if (hadAgentFailure !== derivedAgentFailure) {
+    throw new Error(
+      `RunReport mismatch: hadAgentFailure (${hadAgentFailure}) does not match derived value (${derivedAgentFailure}).`,
+    );
   }
 
-  const logStream = createWriteStream(testsLogPath, { flags: "w" });
+  if (hadTestFailure !== derivedTestFailure) {
+    throw new Error(
+      `RunReport mismatch: hadTestFailure (${hadTestFailure}) does not match derived value (${derivedTestFailure}).`,
+    );
+  }
 
-  const result = await new Promise<AgentTestResult>((resolve, reject) => {
-    const child = spawn(testCommand, {
-      cwd,
-      shell: true,
-      stdio: ["ignore", "pipe", "pipe"],
-      env: process.env,
-    });
-
-    const stdout = child.stdout;
-    const stderr = child.stderr;
-
-    if (!stdout || !stderr) {
-      logStream.end();
-      reject(new Error("Failed to capture test process output"));
-      return;
-    }
-
-    stdout.pipe(logStream, { end: false });
-    stderr.pipe(logStream, { end: false });
-
-    child.on("error", (error: Error) => {
-      logStream.end();
-      reject(error);
-    });
-
-    child.on("close", (code: number | null) => {
-      logStream.end();
-      const status = code === 0 ? "passed" : "failed";
-      resolve(
-        agentTestResultSchema.parse({
-          status,
-          command: testCommand,
-          exitCode: code ?? 0,
-          logPath: normalizePathForDisplay(relativeToRoot(root, testsLogPath)),
-        }),
-      );
-    });
-  });
-
-  return result;
+  return {
+    runId: record.runId,
+    spec: record.spec,
+    agents,
+    hadAgentFailure: derivedAgentFailure,
+    hadTestFailure: derivedTestFailure,
+  };
 }
 
 function buildAgentArgv(
@@ -581,3 +896,5 @@ function buildAgentArgv(
 
   return [...argv, prompt];
 }
+
+export { toAgentReport, toRunReport };
