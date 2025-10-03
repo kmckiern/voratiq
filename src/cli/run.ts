@@ -2,6 +2,7 @@ import { renderRunSummary } from "../logs/index.js";
 import type { AgentLogSummary } from "../logs/run.js";
 import type { AgentOutcome } from "../run/command.js";
 import { executeRunCommand } from "../run/command.js";
+import { ensureNonEmptyString, requireFlagValue } from "../utils/args.js";
 import { ensureSpecPath, resolveCliContext } from "./preflight.js";
 
 interface RunCliOptions {
@@ -51,20 +52,23 @@ function parseRunArgs(args: string[]): RunCliOptions {
 
     switch (arg) {
       case "--spec": {
-        const result = expectRequiredValue(args, index, "--spec");
+        const result = requireFlagValue(args, index, "--spec");
         options.specPath = result.value;
         index = result.nextIndex;
         break;
       }
       case "--test-command": {
-        const result = expectRequiredValue(args, index, "--test-command");
+        const result = requireFlagValue(args, index, "--test-command");
         options.testCommand = result.value;
         index = result.nextIndex;
         break;
       }
       case "--id": {
-        const result = expectRequiredValue(args, index, "--id");
-        options.runId = result.value;
+        const result = requireFlagValue(args, index, "--id");
+        options.runId = ensureNonEmptyString(
+          result.value,
+          "Expected value after --id",
+        );
         index = result.nextIndex;
         break;
       }
@@ -92,22 +96,4 @@ function mapOutcomeToLogSummary(outcome: AgentOutcome): AgentLogSummary {
     testsExitCode: outcome.tests.exitCode ?? undefined,
     artifacts: outcome.artifacts,
   };
-}
-
-interface FlagValueResult {
-  value: string;
-  nextIndex: number;
-}
-
-function expectRequiredValue(
-  args: string[],
-  index: number,
-  flag: string,
-): FlagValueResult {
-  const value = args[index + 1];
-  if (!value || value.trim().length === 0) {
-    throw new Error(`Expected value after ${flag}`);
-  }
-
-  return { value, nextIndex: index + 2 };
 }

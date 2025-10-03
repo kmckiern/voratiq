@@ -31,6 +31,7 @@ import {
   resolvePath,
 } from "../utils/path.js";
 import { pathExists } from "../utils/fs.js";
+import { ensureNonEmptyString } from "../utils/args.js";
 
 const STDOUT_FILENAME = "stdout.log" as const;
 const STDERR_FILENAME = "stderr.log" as const;
@@ -113,8 +114,8 @@ export async function executeRunCommand(
     runId: explicitRunId,
   } = options;
 
-  if (testCommand !== undefined && testCommand.trim().length === 0) {
-    throw new Error("Test command cannot be empty or whitespace");
+  if (testCommand !== undefined) {
+    ensureNonEmptyString(testCommand, "Test command cannot be empty or whitespace");
   }
 
   const specContent = await readFile(specAbsolutePath, "utf8");
