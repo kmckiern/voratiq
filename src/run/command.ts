@@ -116,6 +116,10 @@ export async function executeRunCommand(
     runId: explicitRunId,
   } = options;
 
+  if (testCommand !== undefined && testCommand.trim().length === 0) {
+    throw new Error("Test command cannot be empty or whitespace");
+  }
+
   const specContent = await readFile(specAbsolutePath, "utf8");
   const specHash = createHash("sha256").update(specContent).digest("hex");
 

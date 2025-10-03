@@ -7,7 +7,6 @@ import { ensureSpecPath, resolveCliContext } from "./preflight.js";
 interface RunCliOptions {
   specPath: string;
   testCommand?: string;
-  skipTests: boolean;
   runId?: string;
 }
 
@@ -24,7 +23,7 @@ export async function runRunCommand(args: string[]): Promise<void> {
     runsFilePath: workspacePaths.runsFile,
     specAbsolutePath,
     specDisplayPath,
-    skipTests: options.skipTests,
+    skipTests: false,
     testCommand: options.testCommand,
     runId: options.runId,
   });
@@ -45,7 +44,6 @@ export async function runRunCommand(args: string[]): Promise<void> {
 function parseRunArgs(args: string[]): RunCliOptions {
   const options: RunCliOptions = {
     specPath: "",
-    skipTests: false,
   };
 
   let index = 0;
@@ -53,36 +51,22 @@ function parseRunArgs(args: string[]): RunCliOptions {
     const arg = args[index] ?? "";
 
     switch (arg) {
-      case "--path": {
-        const value = args[index + 1];
-        if (!value) {
-          throw new Error("Expected value after --path");
-        }
-        options.specPath = value;
-        index += 2;
+      case "--spec": {
+        const result = expectRequiredValue(args, index, "--spec");
+        options.specPath = result.value;
+        index = result.nextIndex;
         break;
       }
       case "--test-command": {
-        const value = args[index + 1];
-        if (!value) {
-          throw new Error("Expected value after --test-command");
-        }
-        options.testCommand = value;
-        index += 2;
-        break;
-      }
-      case "--no-tests": {
-        options.skipTests = true;
-        index += 1;
+        const result = expectRequiredValue(args, index, "--test-command");
+        options.testCommand = result.value;
+        index = result.nextIndex;
         break;
       }
       case "--id": {
-        const value = args[index + 1];
-        if (!value) {
-          throw new Error("Expected value after --id");
-        }
-        options.runId = value;
-        index += 2;
+        const result = expectRequiredValue(args, index, "--id");
+        options.runId = result.value;
+        index = result.nextIndex;
         break;
       }
       default:
@@ -91,7 +75,7 @@ function parseRunArgs(args: string[]): RunCliOptions {
   }
 
   if (!options.specPath) {
-    throw new Error("Missing required --path <spec>");
+    throw new Error("Missing required --spec <spec>");
   }
 
   return options;
@@ -109,4 +93,22 @@ function mapOutcomeToLogSummary(outcome: AgentOutcome): AgentLogSummary {
     testsExitCode: outcome.tests.exitCode ?? undefined,
     artifacts: outcome.artifacts,
   };
+}
+
+interface FlagValueResult {
+  value: string;
+  nextIndex: number;
+}
+
+function expectRequiredValue(
+  args: string[],
+  index: number,
+  flag: string,
+): FlagValueResult {
+  const value = args[index + 1];
+  if (!value || value.trim().length === 0) {
+    throw new Error(`Expected value after ${flag}`);
+  }
+
+  return { value, nextIndex: index + 2 };
 }

@@ -1,5 +1,5 @@
 ```
-$ voratiq run --path tests/fixtures/hello-world.md --test-command "npm test"
+$ voratiq run --spec tests/fixtures/hello-world.md --test-command "npm test"
 
 Running agents against spec: tests/fixtures/hello-world.md
 Run ID: 20251001-143500-fghij

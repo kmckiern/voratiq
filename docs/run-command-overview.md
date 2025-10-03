@@ -13,7 +13,7 @@ This document describes how the `voratiq run` command orchestrates agents, manag
 
 1. **Preflight**
    - Ensure the caller is at the repository root and `.voratiq/` exists with the expected structure.
-   - Validate the spec path provided via `--path` (absolute or relative).
+   - Validate the spec path provided via `--spec` (absolute or relative).
    - Abort immediately on any mismatch; do not attempt auto-repair.
 
 2. **Run scaffolding**

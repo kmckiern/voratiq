@@ -141,6 +141,26 @@ describe("voratiq run (integration)", () => {
       /Run directory already exists/u,
     );
   });
+
+  it("rejects an empty test command", async () => {
+    await createWorkspace(repoRoot);
+
+    const specPath = join(repoRoot, "specs", "blank-test.md");
+    await mkdir(join(repoRoot, "specs"), { recursive: true });
+    await writeFile(specPath, "Reject empty test command\n", "utf8");
+
+    await expect(
+      executeRunCommand({
+        root: repoRoot,
+        runsDirectory: join(repoRoot, ".voratiq", "runs"),
+        runsFilePath: join(repoRoot, ".voratiq", "runs.jsonl"),
+        specAbsolutePath: specPath,
+        specDisplayPath: relative(repoRoot, specPath),
+        skipTests: false,
+        testCommand: "   ",
+      }),
+    ).rejects.toThrow(/Test command cannot be empty or whitespace/u);
+  });
 });
 
 async function initGitRepository(root: string): Promise<void> {
