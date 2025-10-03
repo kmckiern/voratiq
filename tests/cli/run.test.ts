@@ -43,18 +43,6 @@ describe("voratiq run (integration)", () => {
     for (const agentId of AGENT_IDS) {
       const envPrefix = buildAgentEnvPrefix(agentId);
       setEnv(`${envPrefix}_BINARY`, agentScriptPath);
-      const argv =
-        agentId === "gemini"
-          ? [
-              "generate",
-              "--model",
-              "{{MODEL}}",
-              "--prompt",
-              "--output-format",
-              "json",
-            ]
-          : ["--prompt", "--model", "{{MODEL}}"];
-      setEnv(`${envPrefix}_ARGV`, JSON.stringify(argv));
       setEnv(`${envPrefix}_MODEL`, `${agentId}-test-model`);
     }
   });

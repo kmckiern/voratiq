@@ -11,10 +11,7 @@ import {
 import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
 
-import {
-  __resetAgentConfigForTests,
-  loadAgentCatalog,
-} from "../../src/agents/config.js";
+import { loadAgentCatalog } from "../../src/agents/config.js";
 import { executeRunCommand } from "../../src/run/command.js";
 import type { AgentInvocationRecord, RunRecord } from "../../src/run/types.js";
 import { createWorkspace } from "../../src/workspace/index.js";
@@ -48,7 +45,6 @@ describe("Gemini agent integration", () => {
   }
 
   beforeEach(async () => {
-    __resetAgentConfigForTests();
     repoRoot = await mkdtemp(join(tmpdir(), "voratiq-gemini-"));
     await initGitRepository(repoRoot);
     agentScriptPath = await createGeminiFixture(repoRoot);
@@ -83,7 +79,6 @@ describe("Gemini agent integration", () => {
 
   afterEach(async () => {
     restoreEnv();
-    __resetAgentConfigForTests();
     if (repoRoot) {
       await rm(repoRoot, { recursive: true, force: true });
     }

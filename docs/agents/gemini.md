@@ -31,21 +31,20 @@ The CLI exits with code `0` on success and uses non-zero exit codes (for example
 
 ## Voratiq Configuration
 
-Voratiq discovers Gemini automatically when both requirements are met:
+Voratiq requires explicit configuration for Gemini:
 
-- Environment variables:
-  - `VORATIQ_AGENT_GEMINI_MODEL` (required) – the Gemini model id, e.g. `gemini-1.5-flash`.
-  - `VORATIQ_AGENT_GEMINI_BINARY` (optional) – absolute path to the CLI; fallback is `command -v gemini`.
-  - `VORATIQ_AGENT_GEMINI_ARGV` (optional) – JSON array of extra CLI flags, appended after Voratiq's defaults.
-- Defaults injected by Voratiq: `generate --model {{MODEL}} --prompt --output-format json`. The runtime fills `{{MODEL}}` and replaces `--prompt` with the synthesized spec prompt.
+- `VORATIQ_AGENT_GEMINI_BINARY` (required) – absolute path to the `gemini` CLI.
+- `VORATIQ_AGENT_GEMINI_MODEL` (required) – model id such as `gemini-2.5-pro`.
+- `VORATIQ_AGENT_GEMINI_ARGV` (optional) – JSON array of extra CLI flags appended after Voratiq's defaults.
+
+Voratiq injects `generate --model {{MODEL}} --prompt --output-format json` automatically. The runtime replaces `{{MODEL}}` with the value from `VORATIQ_AGENT_GEMINI_MODEL` and passes the spec prompt as the final argument.
 
 Example shell configuration:
 
 ```bash
-export VORATIQ_AGENT_GEMINI_MODEL="gemini-1.5-flash"
+export VORATIQ_AGENT_GEMINI_MODEL="gemini-2.5-pro"
 export VORATIQ_AGENT_GEMINI_ARGV='["--safety-settings","strict"]'
-# Optional override:
-# export VORATIQ_AGENT_GEMINI_BINARY="/usr/local/bin/gemini"
+export VORATIQ_AGENT_GEMINI_BINARY="/usr/local/bin/gemini"
 ```
 
 Run all agents, including Gemini:

@@ -26,14 +26,15 @@ Anything beyond those instructions could confuse / distract the agent and risks 
 
 Each agent binary is configured via environment variables (for example, `.env.local`). Set:
 
-- `VORATIQ_AGENT_<ID>_BINARY` – absolute path to the executable.
-- `VORATIQ_AGENT_<ID>_ARGV` – JSON array of static CLI arguments. Include `{{MODEL}}` somewhere in the array; Voratiq replaces that token with the configured model string before spawning the agent.
-- `VORATIQ_AGENT_<ID>_MODEL` – required model identifier recorded in run logs and exported to the agent process as `VORATIQ_AGENT_MODEL`.
+- `VORATIQ_AGENT_<ID>_BINARY` – absolute path to the executable (required).
+- `VORATIQ_AGENT_<ID>_MODEL` – model identifier recorded in run logs and exported to the agent process as `VORATIQ_AGENT_MODEL` (required).
+- `VORATIQ_AGENT_<ID>_ARGV` – JSON array of additional CLI arguments appended after Voratiq’s built-in defaults; omit this unless you need extra flags.
 
-Recommendations for the current reference agents:
+For the built-in agents (`claude-code`, `codex`, `gemini`), Voratiq injects the headless-friendly defaults directly:
 
-- **Claude Code**: include `-p` (headless mode), `--output-format json`, and a fixed model identifier. Avoid permission prompts by supplying the CLI’s auto-approval flag if available.
-- **OpenAI Codex CLI**: use `exec` for headless execution, `--sandbox workspace-write`, and `--experimental-json` for structured output. Disable optional MCP integrations by setting `-c mcp_servers={}` unless explicitly required. Attach `--model {{MODEL}}` (or whatever flag the CLI expects) in `VORATIQ_AGENT_CODEX_ARGV` so the orchestrator’s `VORATIQ_AGENT_MODEL` drives the runtime behavior automatically.
+- **Claude Code**: `-p --output-format json --permission-mode acceptEdits --allowedTools Bash,Read,Edit --model {{MODEL}}`
+- **OpenAI Codex CLI**: `exec --sandbox workspace-write --experimental-json --full-auto -c mcp_servers={} --model {{MODEL}} --prompt`
+- **Gemini CLI**: `generate --model {{MODEL}} --prompt --output-format json`
 
 ## Summary file expectations
 

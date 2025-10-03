@@ -1,4 +1,3 @@
-import { execFileSync } from "node:child_process";
 import process from "node:process";
 
 import {
@@ -20,18 +19,39 @@ export interface LoadAgentCatalogOptions {
   env?: AgentEnvironment;
 }
 
-const GEMINI_COMMAND = "gemini" as const;
-const GEMINI_DEFAULT_ARGV = [
-  "generate",
-  "--model",
-  "{{MODEL}}",
-  "--prompt",
-  "--output-format",
-  "json",
-] as const;
-
-let cachedGeminiBinaryPath: string | undefined;
-let cachedGeminiBinaryError: Error | undefined;
+const AGENT_DEFAULT_ARGV: Record<AgentId, readonly string[]> = {
+  "claude-code": [
+    "-p",
+    "--output-format",
+    "json",
+    "--permission-mode",
+    "acceptEdits",
+    "--allowedTools",
+    "Bash,Read,Edit",
+    "--model",
+    "{{MODEL}}",
+  ],
+  codex: [
+    "exec",
+    "--sandbox",
+    "workspace-write",
+    "--experimental-json",
+    "--full-auto",
+    "-c",
+    "mcp_servers={}",
+    "--model",
+    "{{MODEL}}",
+    "--prompt",
+  ],
+  gemini: [
+    "generate",
+    "--model",
+    "{{MODEL}}",
+    "--prompt",
+    "--output-format",
+    "json",
+  ],
+} as const;
 
 export function loadAgentCatalog(
   options: LoadAgentCatalogOptions = {},
@@ -52,12 +72,7 @@ function loadAgentDefinition(
   const model = parseModel(env[`${prefix}_MODEL`], agentId, prefix);
 
   const argvTemplate = buildArgvTemplate(agentId, env, prefix);
-  const argv = applyModelPlaceholder(
-    argvTemplate,
-    model,
-    agentId,
-    prefix,
-  );
+  const argv = applyModelPlaceholder(argvTemplate, model, agentId);
 
   return {
     id: agentId,
@@ -75,49 +90,10 @@ function resolveBinaryPath(
   const envKey = `${prefix}_BINARY`;
   const rawValue = env[envKey];
 
-  if (typeof rawValue === "string" && rawValue.trim().length > 0) {
-    return rawValue.trim();
-  }
-
-  if (agentId === "gemini") {
-    return resolveGeminiBinary(prefix);
-  }
-
   return ensureNonEmptyString(
     rawValue,
     `Missing environment variable: ${prefix}_BINARY for agent ${agentId}`,
   ).trim();
-}
-
-function resolveGeminiBinary(prefix: string): string {
-  if (cachedGeminiBinaryPath) {
-    return cachedGeminiBinaryPath;
-  }
-  if (cachedGeminiBinaryError) {
-    throw cachedGeminiBinaryError;
-  }
-
-  try {
-    const resolved = execFileSync("command", ["-v", GEMINI_COMMAND], {
-      encoding: "utf8",
-    })
-      .trim()
-      .split("\n", 1)[0] ?? "";
-
-    if (!resolved) {
-      throw new Error("command -v returned no result");
-    }
-
-    cachedGeminiBinaryPath = resolved;
-    return resolved;
-  } catch (error) {
-    const detail = error instanceof Error ? error.message : String(error);
-    const failure = new Error(
-      `Unable to locate Gemini CLI binary. Set ${prefix}_BINARY or ensure '${GEMINI_COMMAND}' is on PATH (command -v gemini). ${detail}`,
-    );
-    cachedGeminiBinaryError = failure;
-    throw failure;
-  }
 }
 
 function buildArgvTemplate(
@@ -125,16 +101,9 @@ function buildArgvTemplate(
   env: AgentEnvironment,
   prefix: string,
 ): string[] {
-  const defaults = getDefaultArgv(agentId);
-  const extra = parseArgv(env[`${prefix}_ARGV`], agentId, prefix);
-  return [...defaults, ...extra];
-}
-
-function getDefaultArgv(agentId: AgentId): string[] {
-  if (agentId === "gemini") {
-    return [...GEMINI_DEFAULT_ARGV];
-  }
-  return [];
+  const defaults = AGENT_DEFAULT_ARGV[agentId] ?? [];
+  const extras = parseArgv(env[`${prefix}_ARGV`], agentId, prefix);
+  return [...defaults, ...extras];
 }
 
 function buildEnvPrefix(agentId: AgentId): string {
@@ -173,7 +142,6 @@ function applyModelPlaceholder(
   argv: string[],
   model: string,
   agentId: AgentId,
-  prefix: string,
 ): string[] {
   let found = false;
   const substituted = argv.map((token) => {
@@ -186,14 +154,9 @@ function applyModelPlaceholder(
 
   if (!found) {
     throw new Error(
-      `Expected ${prefix}_ARGV to include ${MODEL_PLACEHOLDER} for agent ${agentId}`,
+      `Expected argv for agent ${agentId} to include ${MODEL_PLACEHOLDER}`,
     );
   }
 
   return substituted;
-}
-
-export function __resetAgentConfigForTests(): void {
-  cachedGeminiBinaryPath = undefined;
-  cachedGeminiBinaryError = undefined;
 }
