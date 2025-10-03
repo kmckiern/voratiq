@@ -115,7 +115,10 @@ export async function executeRunCommand(
   } = options;
 
   if (testCommand !== undefined) {
-    ensureNonEmptyString(testCommand, "Test command cannot be empty or whitespace");
+    ensureNonEmptyString(
+      testCommand,
+      "Test command cannot be empty or whitespace",
+    );
   }
 
   const specContent = await readFile(specAbsolutePath, "utf8");
