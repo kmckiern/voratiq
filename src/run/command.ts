@@ -48,7 +48,6 @@ export interface RunExecutionOptions {
   runsFilePath: string;
   specAbsolutePath: string;
   specDisplayPath: string;
-  skipTests: boolean;
   testCommand?: string;
   runId?: string;
 }
@@ -92,7 +91,6 @@ interface AgentExecutionContext {
   root: string;
   runRoot: string;
   specContent: string;
-  skipTests: boolean;
   testCommand?: string;
 }
 
@@ -111,7 +109,6 @@ export async function executeRunCommand(
     runsFilePath,
     specAbsolutePath,
     specDisplayPath,
-    skipTests,
     testCommand,
     runId: explicitRunId,
   } = options;
@@ -149,7 +146,6 @@ export async function executeRunCommand(
       root,
       runRoot,
       specContent,
-      skipTests,
       testCommand,
     });
 
@@ -198,7 +194,6 @@ async function executeAgent(
     root,
     runRoot,
     specContent,
-    skipTests,
     testCommand,
   } = context;
 
@@ -302,8 +297,7 @@ async function executeAgent(
     }
   }
 
-  const attemptedTests =
-    Boolean(testCommand) && !skipTests && status === "succeeded";
+  const attemptedTests = Boolean(testCommand) && status === "succeeded";
 
   const testsResult = await maybeRunTests({
     testCommand,

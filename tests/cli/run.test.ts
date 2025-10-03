@@ -73,7 +73,6 @@ describe("voratiq run (integration)", () => {
       runsFilePath: join(repoRoot, ".voratiq", "runs.jsonl"),
       specAbsolutePath: specPath,
       specDisplayPath: relative(repoRoot, specPath),
-      skipTests: false,
     });
 
     expect(runResult.agentOutcomes).toHaveLength(AGENT_IDS.length);
@@ -131,7 +130,6 @@ describe("voratiq run (integration)", () => {
       runsFilePath: join(repoRoot, ".voratiq", "runs.jsonl"),
       specAbsolutePath: specPath,
       specDisplayPath: relative(repoRoot, specPath),
-      skipTests: true,
       runId: "custom-run-id",
     } as const;
 
@@ -156,7 +154,6 @@ describe("voratiq run (integration)", () => {
         runsFilePath: join(repoRoot, ".voratiq", "runs.jsonl"),
         specAbsolutePath: specPath,
         specDisplayPath: relative(repoRoot, specPath),
-        skipTests: false,
         testCommand: "   ",
       }),
     ).rejects.toThrow(/Test command cannot be empty or whitespace/u);

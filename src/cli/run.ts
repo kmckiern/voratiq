@@ -23,7 +23,6 @@ export async function runRunCommand(args: string[]): Promise<void> {
     runsFilePath: workspacePaths.runsFile,
     specAbsolutePath,
     specDisplayPath,
-    skipTests: false,
     testCommand: options.testCommand,
     runId: options.runId,
   });
