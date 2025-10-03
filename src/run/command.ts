@@ -399,10 +399,16 @@ async function runAgentProcess(
   const stdoutStream = createWriteStream(stdoutPath, { flags: "w" });
   const stderrStream = createWriteStream(stderrPath, { flags: "w" });
 
+  const childEnv: Record<string, string | undefined> = {
+    ...process.env,
+    VORATIQ_AGENT_ID: agent.id,
+    VORATIQ_AGENT_MODEL: agent.model,
+  };
+
   return new Promise<AgentProcessResult>((resolve, reject) => {
     const child = spawn(agent.binaryPath, argv, {
       cwd,
-      env: process.env,
+      env: childEnv,
       stdio: ["pipe", "pipe", "pipe"],
     });
 

@@ -27,13 +27,13 @@ Anything beyond those instructions could confuse / distract the agent and risks 
 Each agent binary is configured via environment variables (for example, `.env.local`). Set:
 
 - `VORATIQ_AGENT_<ID>_BINARY` – absolute path to the executable.
-- `VORATIQ_AGENT_<ID>_ARGV` – JSON array of static CLI arguments.
-- `VORATIQ_AGENT_<ID>_MODEL` (optional) – explicit model identifier if the CLI supports it.
+- `VORATIQ_AGENT_<ID>_ARGV` – JSON array of static CLI arguments. Include `{{MODEL}}` somewhere in the array; Voratiq replaces that token with the configured model string before spawning the agent.
+- `VORATIQ_AGENT_<ID>_MODEL` – required model identifier recorded in run logs and exported to the agent process as `VORATIQ_AGENT_MODEL`.
 
 Recommendations for the current reference agents:
 
 - **Claude Code**: include `-p` (headless mode), `--output-format json`, and a fixed model identifier. Avoid permission prompts by supplying the CLI’s auto-approval flag if available.
-- **OpenAI Codex CLI**: use `exec` for headless execution, `--sandbox workspace-write`, and `--experimental-json` for structured output. Disable optional MCP integrations by setting `-c mcp_servers={}` unless explicitly required.
+- **OpenAI Codex CLI**: use `exec` for headless execution, `--sandbox workspace-write`, and `--experimental-json` for structured output. Disable optional MCP integrations by setting `-c mcp_servers={}` unless explicitly required. Attach `--model {{MODEL}}` (or whatever flag the CLI expects) in `VORATIQ_AGENT_CODEX_ARGV` so the orchestrator’s `VORATIQ_AGENT_MODEL` drives the runtime behavior automatically.
 
 ## Summary file expectations
 

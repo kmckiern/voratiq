@@ -40,7 +40,10 @@ describe("voratiq run (integration)", () => {
     for (const agentId of AGENT_IDS) {
       const envPrefix = buildAgentEnvPrefix(agentId);
       setEnv(`${envPrefix}_BINARY`, agentScriptPath);
-      setEnv(`${envPrefix}_ARGV`, JSON.stringify(["--prompt"]));
+      setEnv(
+        `${envPrefix}_ARGV`,
+        JSON.stringify(["--prompt", "--model", "{{MODEL}}"]),
+      );
       setEnv(`${envPrefix}_MODEL`, `${agentId}-test-model`);
     }
   });
