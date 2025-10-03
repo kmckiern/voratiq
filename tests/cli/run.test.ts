@@ -78,16 +78,15 @@ describe("voratiq run (integration)", () => {
 
     expect(runResult.agentOutcomes).toHaveLength(AGENT_IDS.length);
     for (const outcome of runResult.agentOutcomes) {
+      const stdoutPath = join(repoRoot, ...outcome.artifacts.stdout.split("/"));
+      const stderrPath = join(repoRoot, ...outcome.artifacts.stderr.split("/"));
       expect(outcome.status).toBe("succeeded");
       expect(outcome.diffAttempted).toBe(true);
       expect(outcome.diffCaptured).toBe(true);
       expect(outcome.tests.attempted).toBe(false);
 
-      const artifactPath = join(
-        repoRoot,
-        outcome.artifacts.stdout.replace(/\//g, "${join.sep}"),
-      );
-      await expect(readFile(artifactPath, "utf8")).resolves.toContain("stdout");
+      await expect(readFile(stdoutPath, "utf8")).resolves.toContain("stdout");
+      await expect(readFile(stderrPath, "utf8")).resolves.toContain("stderr");
 
       const workspaceArtifact = join(
         repoRoot,
@@ -189,8 +188,8 @@ if (!prompt) {
 }
 
 const workspace = process.cwd();
-const firstLine = prompt.split('\n')[0] || '';
-fs.writeFileSync(path.join(workspace, 'artifact.txt'), firstLine + '\n', 'utf8');
+const firstLine = prompt.split('\\n')[0] || '';
+fs.writeFileSync(path.join(workspace, 'artifact.txt'), firstLine + '\\n', 'utf8');
 fs.writeFileSync(path.join(workspace, '.summary.txt'), 'Implemented spec changes.', 'utf8');
 
 console.log('stdout log');
