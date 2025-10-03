@@ -4,3 +4,7 @@ export class GitRepositoryError extends Error {
     this.name = "GitRepositoryError";
   }
 }
+
+export function toErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}

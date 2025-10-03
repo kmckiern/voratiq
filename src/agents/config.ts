@@ -1,11 +1,14 @@
 import process from "node:process";
 
+import { ensureNonEmptyString, ensureStringArray } from "../utils/validators.js";
 import {
   AgentCatalog,
   AgentDefinition,
   AgentId,
   KNOWN_AGENT_IDS,
 } from "./types.js";
+
+const MODEL_PLACEHOLDER = "{{MODEL}}";
 
 type AgentEnvironment = Record<string, unknown>;
 
@@ -27,18 +30,14 @@ function loadAgentDefinition(
 ): AgentDefinition {
   const prefix = buildEnvPrefix(agentId);
 
-  const binaryValue = env[`${prefix}_BINARY`];
-  if (typeof binaryValue !== "string" || binaryValue.length === 0) {
-    throw new Error(
-      `Missing environment variable: ${prefix}_BINARY for agent ${agentId}`,
-    );
-  }
+  const binaryValue = ensureNonEmptyString(
+    env[`${prefix}_BINARY`],
+    `Missing environment variable: ${prefix}_BINARY for agent ${agentId}`,
+  );
 
-  const modelValue = env[`${prefix}_MODEL`];
-  const model = parseModel(modelValue, agentId, prefix);
+  const model = parseModel(env[`${prefix}_MODEL`], agentId, prefix);
 
-  const argvValue = env[`${prefix}_ARGV`];
-  const argvWithPlaceholder = parseArgv(argvValue, agentId, prefix);
+  const argvWithPlaceholder = parseArgv(env[`${prefix}_ARGV`], agentId, prefix);
   const argv = applyModelPlaceholder(
     argvWithPlaceholder,
     model,
@@ -66,10 +65,10 @@ function parseArgv(value: unknown, agentId: AgentId, prefix: string): string[] {
 
   try {
     const parsed = JSON.parse(value) as unknown;
-    if (!isStringArray(parsed)) {
-      throw new Error();
-    }
-    return parsed;
+    return ensureStringArray(
+      parsed,
+      `Invalid JSON array provided via ${prefix}_ARGV for agent ${agentId}`,
+    );
   } catch {
     throw new Error(
       `Invalid JSON array provided via ${prefix}_ARGV for agent ${agentId}`,
@@ -77,23 +76,14 @@ function parseArgv(value: unknown, agentId: AgentId, prefix: string): string[] {
   }
 }
 
-function isStringArray(value: unknown): value is string[] {
-  return (
-    Array.isArray(value) && value.every((entry) => typeof entry === "string")
-  );
-}
-
 function parseModel(value: unknown, agentId: AgentId, prefix: string): string {
-  if (typeof value !== "string" || value.trim().length === 0) {
-    throw new Error(
-      `Missing environment variable: ${prefix}_MODEL for agent ${agentId}`,
-    );
-  }
+  const model = ensureNonEmptyString(
+    value,
+    `Missing environment variable: ${prefix}_MODEL for agent ${agentId}`,
+  );
 
-  return value.trim();
+  return model.trim();
 }
-
-const MODEL_PLACEHOLDER = "{{MODEL}}";
 
 function applyModelPlaceholder(
   argv: string[],

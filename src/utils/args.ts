@@ -1,3 +1,6 @@
+import { ensureNonEmptyString } from "./validators.js";
+export { ensureNonEmptyString } from "./validators.js";
+
 export interface RequiredFlagValueResult {
   value: string;
   nextIndex: number;
@@ -14,15 +17,4 @@ export function requireFlagValue(
   );
 
   return { value, nextIndex: index + 2 };
-}
-
-export function ensureNonEmptyString(
-  value: string | undefined,
-  errorMessage: string,
-): string {
-  if (!value || value.trim().length === 0) {
-    throw new Error(errorMessage);
-  }
-
-  return value;
 }
