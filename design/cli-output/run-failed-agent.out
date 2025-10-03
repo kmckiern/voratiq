@@ -19,7 +19,7 @@ claude-code:
 
 codex:
   - Running agent...
-  - Status: failed ([propagated error message, like "Agent failed to modify code" or "Change summary not written", etc])
+  - Status: failed (Agent exited before modifying the workspace)
   - Artifacts:
     - stdout: .voratiq/runs/20251003-052332-ikneb/codex/stdout.log
     - stderr: .voratiq/runs/20251003-052332-ikneb/codex/stderr.log
