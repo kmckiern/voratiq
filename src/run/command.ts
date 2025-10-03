@@ -571,5 +571,5 @@ function buildAgentArgv(
     }
   }
 
-  return [...argv, "--prompt", prompt];
+  return [...argv, prompt];
 }
