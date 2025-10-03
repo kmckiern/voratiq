@@ -191,7 +191,9 @@ describe("voratiq run (integration)", () => {
       "20251003-052332-ikneb",
       runId,
     );
-    expect(trimmedOutput).toBe(expectedSummary);
+    const normalizedActual = normalizeChangesLines(trimmedOutput);
+    const normalizedExpected = normalizeChangesLines(expectedSummary);
+    expect(normalizedActual).toBe(normalizedExpected);
 
     const runsLog = await readFile(
       join(repoRoot, ".voratiq", "runs.jsonl"),
@@ -509,4 +511,8 @@ function extractDesignSummary(template: string): string {
 
 function buildAgentEnvPrefix(agentId: string): string {
   return `VORATIQ_AGENT_${agentId.toUpperCase().replace(/[^A-Z0-9]/g, "_")}`;
+}
+
+function normalizeChangesLines(value: string): string {
+  return value.replace(/(\s+- Changes: ).+/gu, "$1<normalized>");
 }

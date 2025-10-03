@@ -5,6 +5,7 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 
 import { loadAgentCatalog } from "../agents/config.js";
 import type { AgentDefinition } from "../agents/types.js";
+import type { AgentId } from "../agents/types.js";
 import {
   agentTestResultSchema,
   type AgentInvocationRecord,
@@ -81,6 +82,31 @@ interface AgentExecutionState {
 interface AgentExecutionResult {
   record: AgentInvocationRecord;
   report: AgentReport;
+}
+
+interface AgentWorkspacePaths {
+  agentRoot: string;
+  stdoutPath: string;
+  stderrPath: string;
+  diffPath: string;
+  summaryPath: string;
+  workspacePath: string;
+  testsLogPath: string;
+  stdoutRelative: string;
+  stderrRelative: string;
+  diffRelativePath: string;
+  workspaceRelative: string;
+  testsLogRelativePath: string;
+}
+
+interface ArtifactCollectionResult {
+  summaryText: string;
+  summaryRelative: string;
+  diffRelative?: string;
+  changeSummary?: string;
+  commitSha?: string;
+  diffAttempted: boolean;
+  diffCaptured: boolean;
 }
 
 export async function executeRunCommand(
@@ -189,279 +215,104 @@ async function executeAgent(
     testCommand,
   } = context;
 
-  const agentRoot = resolvePath(runRoot, agent.id);
-  const stdoutPath = resolvePath(agentRoot, STDOUT_FILENAME);
-  const stderrPath = resolvePath(agentRoot, STDERR_FILENAME);
-  const diffPath = resolvePath(agentRoot, DIFF_FILENAME);
-  const summaryPath = resolvePath(agentRoot, SUMMARY_FILENAME);
-  const workspacePath = resolvePath(agentRoot, WORKSPACE_DIRNAME);
-  const testsLogPath = resolvePath(agentRoot, TESTS_FILENAME);
-
-  const stdoutRelative = normalizePathForDisplay(
-    relativeToRoot(root, stdoutPath),
-  );
-  const stderrRelative = normalizePathForDisplay(
-    relativeToRoot(root, stderrPath),
-  );
-  const diffRelativePath = normalizePathForDisplay(
-    relativeToRoot(root, diffPath),
-  );
-  const workspaceRelative = normalizePathForDisplay(
-    relativeToRoot(root, workspacePath),
-  );
-  const testsLogRelativePath = normalizePathForDisplay(
-    relativeToRoot(root, testsLogPath),
-  );
-
-  const state: AgentExecutionState = {
-    diffAttempted: false,
-    diffCaptured: false,
-    testsAttempted: false,
-  };
-
+  const workspacePaths = buildAgentWorkspacePaths({
+    root,
+    runRoot,
+    agentId: agent.id,
+  });
   const prompt = buildAgentPrompt({ specContent });
   const agentArgv = buildAgentArgv(agent.argv, prompt);
   const startedAt = new Date().toISOString();
-  let completedAt = startedAt;
-  let status: "succeeded" | "failed" = "succeeded";
-  let changeSummary: string | undefined;
-  let commitSha: string | undefined;
-  let summaryText: string | undefined;
-  let summaryRelative: string | undefined;
-  let diffRelative: string | undefined;
-  let testsResult: AgentTestResult | undefined;
-  let errorMessage: string | undefined;
+  const agentContext = new AgentRunContext({
+    agent,
+    agentArgv,
+    prompt,
+    startedAt,
+    workspacePaths,
+  });
 
   try {
-    await scaffoldAgentWorkspace({
-      agentRoot,
-      stdoutPath,
-      stderrPath,
-      diffPath,
-      summaryPath,
-      testsLogPath,
-      workspacePath,
+    await prepareAgentWorkspace({
+      paths: workspacePaths,
+      baseRevision,
+      root,
+      agentId: agent.id,
+      runId,
     });
   } catch (error) {
     const failure =
-      error instanceof WorkspaceSetupError
-        ? error
-        : ensureWorkspaceError(error);
-    status = "failed";
-    errorMessage = failure.messageForDisplay();
-    completedAt = new Date().toISOString();
-    const record = buildAgentRecord({
-      agent,
-      agentArgv,
-      changeSummary,
-      commitSha,
-      completedAt,
-      diffRelative,
-      errorMessage,
-      prompt,
-      startedAt,
-      status,
-      stdoutRelative,
-      stderrRelative,
-      summaryRelative,
-      testsResult,
-      workspaceRelative,
-      summaryText,
-    });
-
-    return finalizeAgentResult(record, state);
-  }
-
-  try {
-    await createWorktree({
-      root,
-      worktreePath: workspacePath,
-      branch: `voratiq/run/${runId}/${agent.id}`,
-      baseRevision,
-    });
-  } catch (error) {
-    const failure = ensureWorkspaceError(error);
-    status = "failed";
-    errorMessage = failure.messageForDisplay();
-    completedAt = new Date().toISOString();
-    const record = buildAgentRecord({
-      agent,
-      agentArgv,
-      changeSummary,
-      commitSha,
-      completedAt,
-      diffRelative,
-      errorMessage,
-      prompt,
-      startedAt,
-      status,
-      stdoutRelative,
-      stderrRelative,
-      summaryRelative,
-      testsResult,
-      workspaceRelative,
-      summaryText,
-    });
-
-    return finalizeAgentResult(record, state);
+      error instanceof RunCommandError ? error : ensureWorkspaceError(error);
+    return agentContext.failWith(failure);
   }
 
   try {
     const processResult = await runAgentProcess({
       agent,
       argv: agentArgv,
-      cwd: workspacePath,
+      cwd: workspacePaths.workspacePath,
       prompt,
-      stdoutPath,
-      stderrPath,
+      stdoutPath: workspacePaths.stdoutPath,
+      stderrPath: workspacePaths.stderrPath,
     });
 
     if (processResult.exitCode !== 0 || processResult.errorMessage) {
-      const workspaceModified = await hasWorkspaceModifications(workspacePath);
+      const workspaceModified = await hasWorkspaceModifications(
+        workspacePaths.workspacePath,
+      );
       const failure = new AgentProcessError({
         phase: workspaceModified ? "afterOutput" : "beforeOutput",
         exitCode: processResult.exitCode,
         detail: processResult.errorMessage,
       });
-      status = "failed";
-      errorMessage = failure.messageForDisplay();
+      agentContext.markFailure(failure);
     }
   } catch (rawError) {
-    if (rawError instanceof RunCommandError) {
-      status = "failed";
-      errorMessage = rawError.messageForDisplay();
-    } else {
-      const failure = new AgentProcessError({
-        phase: "beforeOutput",
-        detail: rawError instanceof Error ? rawError.message : String(rawError),
-      });
-      status = "failed";
-      errorMessage = failure.messageForDisplay();
-    }
+    const failure =
+      rawError instanceof RunCommandError
+        ? rawError
+        : new AgentProcessError({
+            phase: "beforeOutput",
+            detail:
+              rawError instanceof Error ? rawError.message : String(rawError),
+          });
+    agentContext.markFailure(failure);
+  }
+
+  if (agentContext.isFailed()) {
+    agentContext.setCompleted();
+    return agentContext.finalize();
   }
 
   try {
-    if (status === "succeeded") {
-      const summaryHarvest = await harvestSummary({
-        workspacePath,
-        summaryPath,
-        root,
-      });
-      summaryText = summaryHarvest.summary;
-      summaryRelative = summaryHarvest.relativePath;
+    const artifacts = await collectAgentArtifacts({
+      baseRevision,
+      workspacePath: workspacePaths.workspacePath,
+      summaryPath: workspacePaths.summaryPath,
+      diffPath: workspacePaths.diffPath,
+      diffRelativePath: workspacePaths.diffRelativePath,
+      root,
+    });
 
-      state.diffAttempted = true;
-
-      await runGitStep("Git add failed", () => gitAddAll(workspacePath));
-      const hasChanges = await gitHasStagedChanges(workspacePath);
-
-      if (hasChanges) {
-        const summaryLine = summaryText.split("\n")[0]?.trim() ?? "";
-        if (!summaryLine) {
-          throw new SummaryMissingError(
-            "Agent summary is missing a subject line",
-          );
-        }
-
-        await runGitStep("Git commit failed", () =>
-          gitCommitAll({
-            cwd: workspacePath,
-            message: summaryLine,
-            authorName: "Voratiq Orchestrator",
-            authorEmail: "cli@voratiq",
-          }),
-        );
-
-        commitSha = await runGitStep("Git rev-parse failed", () =>
-          runGitCommand(["rev-parse", "HEAD"], { cwd: workspacePath }),
-        );
-
-        const diffContent = await runGitStep("Git diff failed", () =>
-          gitDiff({
-            cwd: workspacePath,
-            baseRevision,
-            targetRevision: "HEAD",
-          }),
-        );
-        await writeFile(diffPath, diffContent, { encoding: "utf8" });
-        diffRelative = diffRelativePath;
-        state.diffCaptured = true;
-
-        changeSummary = await runGitStep("Git diff --shortstat failed", () =>
-          gitDiffShortStat({
-            cwd: workspacePath,
-            baseRevision,
-            targetRevision: "HEAD",
-          }),
-        );
-      }
-    }
+    agentContext.applyArtifacts(artifacts);
   } catch (rawError) {
     const failure = classifyPostProcessError(rawError);
-    status = "failed";
-    errorMessage = failure.messageForDisplay();
+    return agentContext.failWith(failure);
   }
 
-  try {
-    if (status === "succeeded" && testCommand) {
-      state.testsAttempted = true;
-      try {
-        const result = await runTests({
-          testCommand,
-          cwd: workspacePath,
-          testsLogPath,
-          root,
-        });
-        testsResult = result;
-      } catch (rawError) {
-        const failure =
-          rawError instanceof TestCommandError
-            ? rawError
-            : new TestCommandError({
-                detail:
-                  rawError instanceof Error
-                    ? rawError.message
-                    : String(rawError),
-              });
-        errorMessage = failure.messageForDisplay();
-        testsResult = agentTestResultSchema.parse({
-          status: "skipped",
-          command: testCommand,
-          logPath: testsLogRelativePath,
-          error: failure.messageForDisplay(),
-        });
-      }
-    }
-  } finally {
-    completedAt = new Date().toISOString();
+  if (testCommand) {
+    const testExecution = await executeAgentTests({
+      testCommand,
+      cwd: workspacePaths.workspacePath,
+      testsLogPath: workspacePaths.testsLogPath,
+      root,
+      testsLogRelativePath: workspacePaths.testsLogRelativePath,
+    });
+
+    agentContext.applyTests(testExecution);
   }
 
-  const record = buildAgentRecord({
-    agent,
-    agentArgv,
-    changeSummary,
-    commitSha,
-    completedAt,
-    diffRelative,
-    errorMessage,
-    prompt,
-    startedAt,
-    status,
-    stdoutRelative,
-    stderrRelative,
-    summaryRelative,
-    testsResult,
-    workspaceRelative,
-    summaryText,
-  });
-
-  const result = finalizeAgentResult(record, {
-    diffAttempted: state.diffAttempted,
-    diffCaptured: state.diffCaptured,
-    testsAttempted: state.testsAttempted,
-  });
-
-  return result;
+  agentContext.setCompleted();
+  return agentContext.finalize();
 }
 
 interface BuildAgentRecordOptions {
@@ -809,6 +660,296 @@ async function harvestSummary(
 function ensureWorkspaceError(error: unknown): WorkspaceSetupError {
   const detail = error instanceof Error ? error.message : String(error);
   return new WorkspaceSetupError({ detail });
+}
+
+function buildAgentWorkspacePaths(options: {
+  root: string;
+  runRoot: string;
+  agentId: AgentId;
+}): AgentWorkspacePaths {
+  const { root, runRoot, agentId } = options;
+
+  const agentRoot = resolvePath(runRoot, agentId);
+  const stdoutPath = resolvePath(agentRoot, STDOUT_FILENAME);
+  const stderrPath = resolvePath(agentRoot, STDERR_FILENAME);
+  const diffPath = resolvePath(agentRoot, DIFF_FILENAME);
+  const summaryPath = resolvePath(agentRoot, SUMMARY_FILENAME);
+  const workspacePath = resolvePath(agentRoot, WORKSPACE_DIRNAME);
+  const testsLogPath = resolvePath(agentRoot, TESTS_FILENAME);
+
+  return {
+    agentRoot,
+    stdoutPath,
+    stderrPath,
+    diffPath,
+    summaryPath,
+    workspacePath,
+    testsLogPath,
+    stdoutRelative: normalizePathForDisplay(relativeToRoot(root, stdoutPath)),
+    stderrRelative: normalizePathForDisplay(relativeToRoot(root, stderrPath)),
+    diffRelativePath: normalizePathForDisplay(relativeToRoot(root, diffPath)),
+    workspaceRelative: normalizePathForDisplay(
+      relativeToRoot(root, workspacePath),
+    ),
+    testsLogRelativePath: normalizePathForDisplay(
+      relativeToRoot(root, testsLogPath),
+    ),
+  };
+}
+
+async function prepareAgentWorkspace(options: {
+  paths: AgentWorkspacePaths;
+  baseRevision: string;
+  root: string;
+  agentId: AgentId;
+  runId: string;
+}): Promise<void> {
+  const { paths, baseRevision, root, agentId, runId } = options;
+
+  try {
+    await scaffoldAgentWorkspace({
+      agentRoot: paths.agentRoot,
+      stdoutPath: paths.stdoutPath,
+      stderrPath: paths.stderrPath,
+      diffPath: paths.diffPath,
+      summaryPath: paths.summaryPath,
+      testsLogPath: paths.testsLogPath,
+      workspacePath: paths.workspacePath,
+    });
+  } catch (error) {
+    throw ensureWorkspaceError(error);
+  }
+
+  try {
+    await createWorktree({
+      root,
+      worktreePath: paths.workspacePath,
+      branch: `voratiq/run/${runId}/${agentId}`,
+      baseRevision,
+    });
+  } catch (error) {
+    throw ensureWorkspaceError(error);
+  }
+}
+
+async function collectAgentArtifacts(options: {
+  baseRevision: string;
+  workspacePath: string;
+  summaryPath: string;
+  diffPath: string;
+  diffRelativePath: string;
+  root: string;
+}): Promise<ArtifactCollectionResult> {
+  const {
+    baseRevision,
+    workspacePath,
+    summaryPath,
+    diffPath,
+    diffRelativePath,
+    root,
+  } = options;
+
+  const summaryHarvest = await harvestSummary({
+    workspacePath,
+    summaryPath,
+    root,
+  });
+
+  await runGitStep("Git add failed", () => gitAddAll(workspacePath));
+  const hasChanges = await gitHasStagedChanges(workspacePath);
+
+  let diffRelative: string | undefined;
+  let changeSummary: string | undefined;
+  let commitSha: string | undefined;
+
+  if (hasChanges) {
+    const summaryLine = summaryHarvest.summary.split("\n")[0]?.trim() ?? "";
+    if (!summaryLine) {
+      throw new SummaryMissingError("Agent summary is missing a subject line");
+    }
+
+    await runGitStep("Git commit failed", () =>
+      gitCommitAll({
+        cwd: workspacePath,
+        message: summaryLine,
+        authorName: "Voratiq Orchestrator",
+        authorEmail: "cli@voratiq",
+      }),
+    );
+
+    commitSha = await runGitStep("Git rev-parse failed", () =>
+      runGitCommand(["rev-parse", "HEAD"], { cwd: workspacePath }),
+    );
+
+    const diffContent = await runGitStep("Git diff failed", () =>
+      gitDiff({
+        cwd: workspacePath,
+        baseRevision,
+        targetRevision: "HEAD",
+      }),
+    );
+    await writeFile(diffPath, diffContent, { encoding: "utf8" });
+    diffRelative = diffRelativePath;
+
+    changeSummary = await runGitStep("Git diff --shortstat failed", () =>
+      gitDiffShortStat({
+        cwd: workspacePath,
+        baseRevision,
+        targetRevision: "HEAD",
+      }),
+    );
+  }
+
+  return {
+    summaryText: summaryHarvest.summary,
+    summaryRelative: summaryHarvest.relativePath,
+    diffRelative,
+    changeSummary,
+    commitSha,
+    diffAttempted: true,
+    diffCaptured: Boolean(diffRelative),
+  };
+}
+
+async function executeAgentTests(options: {
+  testCommand: string;
+  cwd: string;
+  testsLogPath: string;
+  root: string;
+  testsLogRelativePath: string;
+}): Promise<AgentTestExecutionResult> {
+  const { testCommand, cwd, testsLogPath, root, testsLogRelativePath } =
+    options;
+
+  try {
+    const result = await runTests({
+      testCommand,
+      cwd,
+      testsLogPath,
+      root,
+    });
+    return { attempted: true, result };
+  } catch (rawError) {
+    const failure =
+      rawError instanceof TestCommandError
+        ? rawError
+        : new TestCommandError({
+            detail:
+              rawError instanceof Error ? rawError.message : String(rawError),
+          });
+
+    const result = agentTestResultSchema.parse({
+      status: "skipped",
+      command: testCommand,
+      logPath: testsLogRelativePath,
+      error: failure.messageForDisplay(),
+    });
+
+    return {
+      attempted: true,
+      result,
+      errorMessage: failure.messageForDisplay(),
+    };
+  }
+}
+
+interface AgentTestExecutionResult {
+  attempted: boolean;
+  result?: AgentTestResult;
+  errorMessage?: string;
+}
+
+class AgentRunContext {
+  public readonly state: AgentExecutionState = {
+    diffAttempted: false,
+    diffCaptured: false,
+    testsAttempted: false,
+  };
+
+  public status: "succeeded" | "failed" = "succeeded";
+  public changeSummary: string | undefined;
+  public commitSha: string | undefined;
+  public summaryText: string | undefined;
+  public summaryRelative: string | undefined;
+  public diffRelative: string | undefined;
+  public testsResult: AgentTestResult | undefined;
+  public errorMessage: string | undefined;
+  private completedAt: string | undefined;
+
+  constructor(private readonly params: {
+    agent: AgentDefinition;
+    agentArgv: string[];
+    prompt: string;
+    startedAt: string;
+    workspacePaths: AgentWorkspacePaths;
+  }) {}
+
+  public markFailure(error: RunCommandError): void {
+    this.status = "failed";
+    this.errorMessage = error.messageForDisplay();
+  }
+
+  public failWith(error: RunCommandError): AgentExecutionResult {
+    this.markFailure(error);
+    this.setCompleted();
+    return this.finalize();
+  }
+
+  public isFailed(): boolean {
+    return this.status === "failed";
+  }
+
+  public setCompleted(): void {
+    if (!this.completedAt) {
+      this.completedAt = new Date().toISOString();
+    }
+  }
+
+  public applyArtifacts(result: ArtifactCollectionResult): void {
+    this.summaryText = result.summaryText;
+    this.summaryRelative = result.summaryRelative;
+    this.diffRelative = result.diffRelative;
+    this.changeSummary = result.changeSummary;
+    this.commitSha = result.commitSha;
+    this.state.diffAttempted ||= result.diffAttempted;
+    this.state.diffCaptured ||= result.diffCaptured;
+  }
+
+  public applyTests(result: AgentTestExecutionResult): void {
+    this.state.testsAttempted ||= result.attempted;
+    if (result.result) {
+      this.testsResult = result.result;
+    }
+    if (result.errorMessage) {
+      this.errorMessage = result.errorMessage;
+    }
+  }
+
+  public finalize(): AgentExecutionResult {
+    this.setCompleted();
+
+    const { agent, agentArgv, prompt, startedAt, workspacePaths } = this.params;
+    const record = buildAgentRecord({
+      agent,
+      agentArgv,
+      changeSummary: this.changeSummary,
+      commitSha: this.commitSha,
+      completedAt: this.completedAt ?? new Date().toISOString(),
+      diffRelative: this.diffRelative,
+      errorMessage: this.errorMessage,
+      prompt,
+      startedAt,
+      status: this.status,
+      stdoutRelative: workspacePaths.stdoutRelative,
+      stderrRelative: workspacePaths.stderrRelative,
+      summaryRelative: this.summaryRelative,
+      testsResult: this.testsResult,
+      workspaceRelative: workspacePaths.workspaceRelative,
+      summaryText: this.summaryText,
+    });
+
+    return finalizeAgentResult(record, this.state);
+  }
 }
 
 function toAgentReport(
