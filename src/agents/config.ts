@@ -19,6 +19,40 @@ export interface LoadAgentCatalogOptions {
   env?: AgentEnvironment;
 }
 
+const AGENT_DEFAULT_ARGV: Record<AgentId, readonly string[]> = {
+  "claude-code": [
+    "--model",
+    MODEL_PLACEHOLDER,
+    "--output-format",
+    "json",
+    "--permission-mode",
+    "acceptEdits",
+    "--allowedTools",
+    "Bash,Read,Edit",
+    "-p",
+  ],
+  codex: [
+    "exec",
+    "--model",
+    MODEL_PLACEHOLDER,
+    "--sandbox",
+    "workspace-write",
+    "--experimental-json",
+    "--full-auto",
+    "-c",
+    "mcp_servers={}",
+  ],
+  gemini: [
+    "generate",
+    "--model",
+    MODEL_PLACEHOLDER,
+    "--output-format",
+    "json",
+    "--approval-mode",
+    "auto_edit",
+  ],
+} as const;
+
 export function loadAgentCatalog(
   options: LoadAgentCatalogOptions = {},
 ): AgentCatalog {
@@ -33,20 +67,12 @@ function loadAgentDefinition(
 ): AgentDefinition {
   const prefix = buildEnvPrefix(agentId);
 
-  const binaryValue = ensureNonEmptyString(
-    env[`${prefix}_BINARY`],
-    `Missing environment variable: ${prefix}_BINARY for agent ${agentId}`,
-  );
+  const binaryValue = resolveBinaryPath(agentId, env, prefix);
 
   const model = parseModel(env[`${prefix}_MODEL`], agentId, prefix);
 
-  const argvWithPlaceholder = parseArgv(env[`${prefix}_ARGV`], agentId, prefix);
-  const argv = applyModelPlaceholder(
-    argvWithPlaceholder,
-    model,
-    agentId,
-    prefix,
-  );
+  const argvTemplate = buildArgvTemplate(agentId, env, prefix);
+  const argv = applyModelPlaceholder(argvTemplate, model, agentId);
 
   return {
     id: agentId,
@@ -54,6 +80,30 @@ function loadAgentDefinition(
     binaryPath: binaryValue,
     argv,
   } satisfies AgentDefinition;
+}
+
+function resolveBinaryPath(
+  agentId: AgentId,
+  env: AgentEnvironment,
+  prefix: string,
+): string {
+  const envKey = `${prefix}_BINARY`;
+  const rawValue = env[envKey];
+
+  return ensureNonEmptyString(
+    rawValue,
+    `Missing environment variable: ${prefix}_BINARY for agent ${agentId}`,
+  ).trim();
+}
+
+function buildArgvTemplate(
+  agentId: AgentId,
+  env: AgentEnvironment,
+  prefix: string,
+): string[] {
+  const defaults = AGENT_DEFAULT_ARGV[agentId] ?? [];
+  const extras = parseArgv(env[`${prefix}_ARGV`], agentId, prefix);
+  return [...defaults, ...extras];
 }
 
 function buildEnvPrefix(agentId: AgentId): string {
@@ -92,7 +142,6 @@ function applyModelPlaceholder(
   argv: string[],
   model: string,
   agentId: AgentId,
-  prefix: string,
 ): string[] {
   let found = false;
   const substituted = argv.map((token) => {
@@ -105,7 +154,7 @@ function applyModelPlaceholder(
 
   if (!found) {
     throw new Error(
-      `Expected ${prefix}_ARGV to include ${MODEL_PLACEHOLDER} for agent ${agentId}`,
+      `Expected argv for agent ${agentId} to include ${MODEL_PLACEHOLDER}`,
     );
   }
 

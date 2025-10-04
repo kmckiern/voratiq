@@ -19,7 +19,7 @@ import { createWorkspace } from "../../src/workspace/index.js";
 
 const execFileAsync = promisify(execFile);
 
-const AGENT_IDS = ["claude-code", "codex"] as const;
+const AGENT_IDS = ["claude-code", "codex", "gemini"] as const;
 const projectRoot = process.cwd();
 
 describe("voratiq run (integration)", () => {
@@ -43,10 +43,6 @@ describe("voratiq run (integration)", () => {
     for (const agentId of AGENT_IDS) {
       const envPrefix = buildAgentEnvPrefix(agentId);
       setEnv(`${envPrefix}_BINARY`, agentScriptPath);
-      setEnv(
-        `${envPrefix}_ARGV`,
-        JSON.stringify(["--prompt", "--model", "{{MODEL}}"]),
-      );
       setEnv(`${envPrefix}_MODEL`, `${agentId}-test-model`);
     }
   });
@@ -382,9 +378,17 @@ function extractPrompt(argv) {
   return '';
 }
 
-const prompt = extractPrompt(process.argv.slice(2));
+let prompt = extractPrompt(process.argv.slice(2));
+if (!prompt && !process.stdin.isTTY) {
+  try {
+    prompt = fs.readFileSync(0, 'utf8');
+  } catch (error) {
+    // ignore and fall back to empty prompt handling below
+  }
+}
+
 if (!prompt) {
-  console.error('Missing prompt argument');
+  console.error('Missing prompt input');
   process.exit(1);
 }
 

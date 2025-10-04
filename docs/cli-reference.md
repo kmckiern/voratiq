@@ -1,6 +1,6 @@
 # Voratiq CLI Reference
 
-Weekend MVP CLI that runs two built-in agents (`claude-code`, `codex`) against a spec and captures the reviewer decision.
+Weekend MVP CLI that runs three built-in agents (`claude-code`, `codex`, `gemini`) against a spec and captures the reviewer decision. See `docs/agents/gemini.md` for Gemini-specific setup steps.
 
 ## Quickstart
 
@@ -10,7 +10,7 @@ Weekend MVP CLI that runs two built-in agents (`claude-code`, `codex`) against a
    voratiq init
    ```
 
-2. **Run both agents on a spec.** Provide the spec Markdown path; the CLI executes each agent in turn, stores patches/logs, and appends a run record.
+2. **Run all agents on a spec.** Provide the spec Markdown path; the CLI executes each agent in turn, stores patches/logs, and appends a run record.
 
    ```bash
    voratiq run --spec specs/terminal-animation.md
@@ -37,19 +37,19 @@ Run commands as `voratiq <command> [options]`.
 - Creates `.voratiq/runs.jsonl`, `.voratiq/config.json`, and `.voratiq/runs/`.
 - Idempotent; safe to run multiple times.
 
-**`run`** – execute both agents against a spec
+**`run`** – execute all agents against a spec
 
 - `--spec <spec>` (required) – spec Markdown path (relative or absolute).
 - `--test-command "..."` – override default test hook for this run.
 - `--id <run-id>` – debug override for generated run identifier.
 
-Behavior: prepares worktrees, runs `claude-code` then `codex`, captures diffs/logs/tests, writes run entry to `runs.jsonl`, and prints summary with artifact paths.
+Behavior: prepares worktrees, runs `claude-code`, `codex`, and `gemini` (when configured), captures diffs/logs/tests, writes a run entry to `runs.jsonl`, and prints summary with artifact paths.
 
 **`review`** – record the reviewer decision
 
 - `--run <run-id>` – review a specific run; defaults to the latest undecided run.
 
-Behavior: displays per-agent status table (tests, patch stats, artifact locations), prompts for winner (`claude-code`, `codex`, `reject`), optional note, then updates run record with decision metadata.
+Behavior: displays per-agent status table (tests, patch stats, artifact locations), prompts for winner (`claude-code`, `codex`, `gemini`, `reject`), optional note, then updates run record with decision metadata.
 
 **`apply`** – apply winning patch to working tree
 
