@@ -7,12 +7,12 @@ import type {
 
 describe("report mapping helpers", () => {
   const baseAgentRecord: AgentInvocationRecord = {
-    agentId: "claude-code",
+    agentId: "claude",
     model: "claude-model",
     binaryPath: "/bin/claude",
     argv: ["--prompt=hello"],
     prompt: "hello",
-    workspacePath: ".voratiq/runs/123/claude-code/workspace",
+    workspacePath: ".voratiq/runs/123/claude/workspace",
     startedAt: new Date(0).toISOString(),
     completedAt: new Date(0).toISOString(),
     status: "succeeded",
@@ -20,18 +20,18 @@ describe("report mapping helpers", () => {
     commit: "abc123",
     changeSummary: "1 file changed",
     assets: {
-      stdout: ".voratiq/runs/123/claude-code/stdout.log",
-      stderr: ".voratiq/runs/123/claude-code/stderr.log",
-      workspace: ".voratiq/runs/123/claude-code/workspace",
-      diff: ".voratiq/runs/123/claude-code/diff.patch",
-      summary: ".voratiq/runs/123/claude-code/summary.txt",
-      tests: ".voratiq/runs/123/claude-code/tests.log",
+      stdout: ".voratiq/runs/123/claude/stdout.log",
+      stderr: ".voratiq/runs/123/claude/stderr.log",
+      workspace: ".voratiq/runs/123/claude/workspace",
+      diff: ".voratiq/runs/123/claude/diff.patch",
+      summary: ".voratiq/runs/123/claude/summary.txt",
+      tests: ".voratiq/runs/123/claude/tests.log",
     },
     tests: {
       status: "passed",
       command: "npm test",
       exitCode: 0,
-      logPath: ".voratiq/runs/123/claude-code/tests.log",
+      logPath: ".voratiq/runs/123/claude/tests.log",
     },
     error: undefined,
   };

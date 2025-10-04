@@ -7,8 +7,8 @@ describe("loadAgentCatalog", () => {
 
   it("reads agent configuration from environment variables", () => {
     const env = {
-      VORATIQ_AGENT_CLAUDE_CODE_BINARY: "/bin/claude",
-      VORATIQ_AGENT_CLAUDE_CODE_MODEL: "claude-code-1",
+      VORATIQ_AGENT_CLAUDE_BINARY: "/bin/claude",
+      VORATIQ_AGENT_CLAUDE_MODEL: "claude-1",
       VORATIQ_AGENT_CODEX_BINARY: "/bin/codex",
       VORATIQ_AGENT_CODEX_MODEL: "gpt-codex",
       VORATIQ_AGENT_GEMINI_BINARY: "/bin/gemini",
@@ -19,12 +19,12 @@ describe("loadAgentCatalog", () => {
 
     expect(catalog).toEqual([
       {
-        id: "claude-code",
-        model: "claude-code-1",
+        id: "claude",
+        model: "claude-1",
         binaryPath: "/bin/claude",
         argv: [
           "--model",
-          "claude-code-1",
+          "claude-1",
           "--output-format",
           "json",
           "--permission-mode",
@@ -69,8 +69,8 @@ describe("loadAgentCatalog", () => {
 
   it("appends optional argv extras from environment variables", () => {
     const env = {
-      VORATIQ_AGENT_CLAUDE_CODE_BINARY: "/bin/claude",
-      VORATIQ_AGENT_CLAUDE_CODE_MODEL: "claude-code-1",
+      VORATIQ_AGENT_CLAUDE_BINARY: "/bin/claude",
+      VORATIQ_AGENT_CLAUDE_MODEL: "claude-1",
       VORATIQ_AGENT_CODEX_BINARY: "/bin/codex",
       VORATIQ_AGENT_CODEX_MODEL: "gpt-codex",
       VORATIQ_AGENT_GEMINI_BINARY: "/bin/gemini",
@@ -97,13 +97,13 @@ describe("loadAgentCatalog", () => {
 
   it("throws when required variables are missing", () => {
     expect(() => loadAgentCatalog({ env: {} })).toThrow(
-      /VORATIQ_AGENT_CLAUDE_CODE_BINARY/u,
+      /VORATIQ_AGENT_CLAUDE_BINARY/u,
     );
   });
 
   it("throws when the model variable is missing", () => {
     const env = {
-      VORATIQ_AGENT_CLAUDE_CODE_BINARY: "/bin/claude",
+      VORATIQ_AGENT_CLAUDE_BINARY: "/bin/claude",
       VORATIQ_AGENT_CODEX_BINARY: "/bin/codex",
       VORATIQ_AGENT_GEMINI_BINARY: "/bin/gemini",
     } as const;

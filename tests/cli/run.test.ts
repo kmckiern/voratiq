@@ -19,7 +19,7 @@ import { createWorkspace } from "../../src/workspace/index.js";
 
 const execFileAsync = promisify(execFile);
 
-const AGENT_IDS = ["claude-code", "codex", "gemini"] as const;
+const AGENT_IDS = ["claude", "codex", "gemini"] as const;
 const projectRoot = process.cwd();
 
 describe("voratiq run (integration)", () => {

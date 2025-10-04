@@ -4,7 +4,7 @@ $ voratiq run --spec tests/fixtures/run/hello-world.md --test-command "HELLO_WOR
 Running agents against spec: tests/fixtures/run/hello-world.md
 Run ID: 20251003-052332-ikneb
 
-claude-code:
+claude:
   - Running agent...
   - Capturing diff...
   - Running tests...
@@ -12,10 +12,10 @@ claude-code:
   - Tests: passed
   - Changes: 1 file changed, 1 insertion(+)
   - Artifacts:
-    - stdout: .voratiq/runs/20251003-052332-ikneb/claude-code/stdout.log
-    - stderr: .voratiq/runs/20251003-052332-ikneb/claude-code/stderr.log
-    - diff: .voratiq/runs/20251003-052332-ikneb/claude-code/diff.patch
-    - tests: .voratiq/runs/20251003-052332-ikneb/claude-code/tests.log
+    - stdout: .voratiq/runs/20251003-052332-ikneb/claude/stdout.log
+    - stderr: .voratiq/runs/20251003-052332-ikneb/claude/stderr.log
+    - diff: .voratiq/runs/20251003-052332-ikneb/claude/diff.patch
+    - tests: .voratiq/runs/20251003-052332-ikneb/claude/tests.log
 
 codex:
   - Running agent...

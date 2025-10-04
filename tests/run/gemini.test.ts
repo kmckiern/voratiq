@@ -49,8 +49,8 @@ describe("Gemini agent integration", () => {
     await initGitRepository(repoRoot);
     agentScriptPath = await createGeminiFixture(repoRoot);
 
-    const agentIds: Array<"claude-code" | "codex" | "gemini"> = [
-      "claude-code",
+    const agentIds: Array<"claude" | "codex" | "gemini"> = [
+      "claude",
       "codex",
       "gemini",
     ];
