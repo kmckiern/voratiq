@@ -23,14 +23,14 @@ describe("loadAgentCatalog", () => {
         model: "claude-code-1",
         binaryPath: "/bin/claude",
         argv: [
+          "--model",
+          "claude-code-1",
           "--output-format",
           "json",
           "--permission-mode",
           "acceptEdits",
           "--allowedTools",
           "Bash,Read,Edit",
-          "--model",
-          "claude-code-1",
           "-p",
         ],
       },
@@ -40,14 +40,14 @@ describe("loadAgentCatalog", () => {
         binaryPath: "/bin/codex",
         argv: [
           "exec",
+          "--model",
+          "gpt-codex",
           "--sandbox",
           "workspace-write",
           "--experimental-json",
           "--full-auto",
           "-c",
           "mcp_servers={}",
-          "--model",
-          "gpt-codex",
         ],
       },
       {
@@ -56,10 +56,12 @@ describe("loadAgentCatalog", () => {
         binaryPath: "/bin/gemini",
         argv: [
           "generate",
-          "--output-format",
-          "json",
           "--model",
           "gemini-1.5-flash",
+          "--output-format",
+          "json",
+          "--approval-mode",
+          "auto_edit",
         ],
       },
     ]);
@@ -82,10 +84,12 @@ describe("loadAgentCatalog", () => {
     expect(gemini).toBeDefined();
     expect(gemini?.argv).toEqual([
       "generate",
-      "--output-format",
-      "json",
       "--model",
       "gemini-1.5-flash",
+      "--output-format",
+      "json",
+      "--approval-mode",
+      "auto_edit",
       "--temperature",
       "0.3",
     ]);
