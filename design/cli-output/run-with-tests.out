@@ -4,7 +4,7 @@ $ voratiq run --spec tests/fixtures/hello-world.md --test-command "npm test"
 Running agents against spec: tests/fixtures/hello-world.md
 Run ID: 20251001-143500-fghij
 
-claude-code:
+claude:
   - Running agent...
   - Capturing diff...
   - Running tests...
@@ -12,10 +12,10 @@ claude-code:
   - Tests: passed
   - Changes: 1 file changed, 10 insertions(+), 2 deletions(-)
   - Artifacts:
-    - stdout: .voratiq/runs/20251001-143500-fghij/claude-code/stdout.log
-    - stderr: .voratiq/runs/20251001-143500-fghij/claude-code/stderr.log
-    - diff: .voratiq/runs/20251001-143500-fghij/claude-code/diff.patch
-    - tests: .voratiq/runs/20251001-143500-fghij/claude-code/tests.log
+    - stdout: .voratiq/runs/20251001-143500-fghij/claude/stdout.log
+    - stderr: .voratiq/runs/20251001-143500-fghij/claude/stderr.log
+    - diff: .voratiq/runs/20251001-143500-fghij/claude/diff.patch
+    - tests: .voratiq/runs/20251001-143500-fghij/claude/tests.log
 
 codex:
   - Running agent...

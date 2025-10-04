@@ -1,6 +1,6 @@
 # Voratiq CLI Reference
 
-Weekend MVP CLI that runs three built-in agents (`claude-code`, `codex`, `gemini`) against a spec and captures the reviewer decision. See `docs/agents/gemini.md` for Gemini-specific setup steps.
+Weekend MVP CLI that runs three built-in agents (`claude`, `codex`, `gemini`) against a spec and captures the reviewer decision. See `docs/agents/gemini.md` for Gemini-specific setup steps.
 
 ## Quickstart
 
@@ -43,13 +43,13 @@ Run commands as `voratiq <command> [options]`.
 - `--test-command "..."` – override default test hook for this run.
 - `--id <run-id>` – debug override for generated run identifier.
 
-Behavior: prepares worktrees, runs `claude-code`, `codex`, and `gemini` (when configured), captures diffs/logs/tests, writes a run entry to `runs.jsonl`, and prints summary with artifact paths.
+Behavior: prepares worktrees, runs `claude`, `codex`, and `gemini` (when configured), captures diffs/logs/tests, writes a run entry to `runs.jsonl`, and prints summary with artifact paths.
 
 **`review`** – record the reviewer decision
 
 - `--run <run-id>` – review a specific run; defaults to the latest undecided run.
 
-Behavior: displays per-agent status table (tests, patch stats, artifact locations), prompts for winner (`claude-code`, `codex`, `gemini`, `reject`), optional note, then updates run record with decision metadata.
+Behavior: displays per-agent status table (tests, patch stats, artifact locations), prompts for winner (`claude`, `codex`, `gemini`, `reject`), optional note, then updates run record with decision metadata.
 
 **`apply`** – apply winning patch to working tree
 

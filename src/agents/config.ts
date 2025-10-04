@@ -20,7 +20,7 @@ export interface LoadAgentCatalogOptions {
 }
 
 const AGENT_DEFAULT_ARGV: Record<AgentId, readonly string[]> = {
-  "claude-code": [
+  claude: [
     "--model",
     MODEL_PLACEHOLDER,
     "--output-format",
