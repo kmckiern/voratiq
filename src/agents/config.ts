@@ -21,7 +21,6 @@ export interface LoadAgentCatalogOptions {
 
 const AGENT_DEFAULT_ARGV: Record<AgentId, readonly string[]> = {
   "claude-code": [
-    "-p",
     "--output-format",
     "json",
     "--permission-mode",
@@ -30,6 +29,7 @@ const AGENT_DEFAULT_ARGV: Record<AgentId, readonly string[]> = {
     "Bash,Read,Edit",
     "--model",
     "{{MODEL}}",
+    "-p",
   ],
   codex: [
     "exec",
@@ -41,16 +41,8 @@ const AGENT_DEFAULT_ARGV: Record<AgentId, readonly string[]> = {
     "mcp_servers={}",
     "--model",
     "{{MODEL}}",
-    "--prompt",
   ],
-  gemini: [
-    "generate",
-    "--model",
-    "{{MODEL}}",
-    "--prompt",
-    "--output-format",
-    "json",
-  ],
+  gemini: ["generate", "--output-format", "json", "--model", "{{MODEL}}"],
 } as const;
 
 export function loadAgentCatalog(

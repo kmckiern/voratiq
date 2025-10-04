@@ -378,9 +378,17 @@ function extractPrompt(argv) {
   return '';
 }
 
-const prompt = extractPrompt(process.argv.slice(2));
+let prompt = extractPrompt(process.argv.slice(2));
+if (!prompt && !process.stdin.isTTY) {
+  try {
+    prompt = fs.readFileSync(0, 'utf8');
+  } catch (error) {
+    // ignore and fall back to empty prompt handling below
+  }
+}
+
 if (!prompt) {
-  console.error('Missing prompt argument');
+  console.error('Missing prompt input');
   process.exit(1);
 }
 

@@ -10,9 +10,9 @@ Voratiq treats every agent the same way: you supply the binary path and model id
 
 Built-in defaults keep the agents in headless mode:
 
-- `claude-code`: `-p --output-format json --permission-mode acceptEdits --allowedTools Bash,Read,Edit --model {{MODEL}}`
-- `codex`: `exec --sandbox workspace-write --experimental-json --full-auto -c mcp_servers={} --model {{MODEL}} --prompt`
-- `gemini`: `generate --model {{MODEL}} --prompt --output-format json`
+- `claude-code`: `--output-format json --permission-mode acceptEdits --allowedTools Bash,Read,Edit --model {{MODEL}} -p`
+- `codex`: `exec --sandbox workspace-write --experimental-json --full-auto -c mcp_servers={} --model {{MODEL}}`
+- `gemini`: `generate --output-format json --model {{MODEL}}`
 
 See the per-agent notes for prerequisites and authentication steps:
 
