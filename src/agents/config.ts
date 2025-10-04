@@ -22,7 +22,7 @@ export interface LoadAgentCatalogOptions {
 const AGENT_DEFAULT_ARGV: Record<AgentId, readonly string[]> = {
   "claude-code": [
     "--model",
-    "{{MODEL}}",
+    MODEL_PLACEHOLDER,
     "--output-format",
     "json",
     "--permission-mode",
@@ -34,7 +34,7 @@ const AGENT_DEFAULT_ARGV: Record<AgentId, readonly string[]> = {
   codex: [
     "exec",
     "--model",
-    "{{MODEL}}",
+    MODEL_PLACEHOLDER,
     "--sandbox",
     "workspace-write",
     "--experimental-json",
@@ -45,7 +45,7 @@ const AGENT_DEFAULT_ARGV: Record<AgentId, readonly string[]> = {
   gemini: [
     "generate",
     "--model",
-    "{{MODEL}}",
+    MODEL_PLACEHOLDER,
     "--output-format",
     "json",
     "--approval-mode",
